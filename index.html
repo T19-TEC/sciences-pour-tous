@@ -7,149 +7,89 @@
 <meta name="description" content="Association préparant gratuitement les lycéens au concours commun des Instituts d'études politiques." />
 
 <style>
-/* ==================================================================
-   SYSTÈME DE DESIGN
-   Toutes les couleurs, tailles et espacements du site sont définis
-   ici et nulle part ailleurs. Modifier ces lignes change l'allure
-   du site entier.
-   ================================================================== */
 :root {
-  --ink:        #0F172A;
-  --ink-soft:   #1E293B;
-  --gray:       #64748B;
-  --gray-soft:  #94A3B8;
-  --paper:      #F8FAFC;
-  --white:      #FFFFFF;
-  --line:       #E2E8F0;
-  --xp:         #B45309;
-  --xp-bright:  #F59E0B;
-  --ok:         #059669;
-  --alert:      #DC2626;
-
-  --s1: 4px;  --s2: 8px;  --s3: 12px;
-  --s4: 20px; --s5: 32px; --s6: 48px;
-
-  --serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
-  --sans:  -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --radius: 8px;
+  --ink:#0F172A; --ink-soft:#1E293B; --gray:#64748B; --gray-soft:#94A3B8;
+  --paper:#F8FAFC; --white:#FFFFFF; --line:#E2E8F0;
+  --xp:#B45309; --xp-bright:#F59E0B; --ok:#059669; --alert:#DC2626;
+  --s1:4px; --s2:8px; --s3:12px; --s4:20px; --s5:32px; --s6:48px;
+  --serif:Georgia,"Iowan Old Style","Times New Roman",serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --radius:8px;
 }
-
-* { box-sizing: border-box; margin: 0; padding: 0; }
-
-body {
-  font-family: var(--sans); color: var(--ink); background: var(--paper);
-  font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased;
-}
-
-h1, h2, h3 { font-family: var(--serif); font-weight: 400; line-height: 1.2; }
-
-button {
-  font-family: inherit; font-size: 14px; cursor: pointer;
-  border: none; border-radius: 6px; padding: 9px var(--s4);
-  background: var(--ink); color: var(--white);
-}
-button:hover:not(:disabled) { background: var(--ink-soft); }
-button:disabled { opacity: .5; cursor: not-allowed; }
-button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
-button.ghost:hover:not(:disabled) { background: var(--paper); }
-button.plain { background: none; color: var(--gray); padding: 0; font-size: 14px; }
-button.plain:hover:not(:disabled) { color: var(--ink); background: none; }
-button.danger { background: none; color: var(--alert); padding: 0; font-size: 13px; }
-button.danger:hover:not(:disabled) { background: none; text-decoration: underline; }
-button.tiny { padding: 3px var(--s2); font-size: 12px; }
-
-input, select, textarea {
-  font-family: inherit; font-size: 14px; width: 100%;
-  padding: 9px var(--s3); border: 1px solid var(--line);
-  border-radius: 6px; background: var(--white); color: var(--ink);
-}
-textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
-input:focus, select:focus, textarea:focus { outline: 2px solid var(--ink); outline-offset: -1px; }
-
-label { display: block; font-size: 13px; color: var(--gray); margin-bottom: var(--s1); }
-.field { margin-bottom: var(--s3); }
-
-.wrap { max-width: 940px; margin: 0 auto; padding: 0 var(--s4); }
-.card {
-  background: var(--white); border: 1px solid var(--line);
-  border-radius: var(--radius); padding: var(--s4);
-}
-.card + .card { margin-top: var(--s3); }
-.eyebrow { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--gray-soft); }
-.muted { color: var(--gray); font-size: 13px; }
-.error  { color: var(--alert); font-size: 13px; background: #FEF2F2; border: 1px solid #FECACA;
-          border-radius: 6px; padding: var(--s2) var(--s3); margin-top: var(--s3); }
-.notice { color: #065F46; font-size: 13px; background: #ECFDF5; border: 1px solid #A7F3D0;
-          border-radius: 6px; padding: var(--s2) var(--s3); margin-top: var(--s3); }
-.pill {
-  display: inline-block; font-size: 11px; padding: 2px var(--s2);
-  border-radius: 999px; background: var(--paper); color: var(--gray); border: 1px solid var(--line);
-}
-.pill.live { background: #ECFDF5; color: #065F46; border-color: #A7F3D0; }
-.pill.unread { background: var(--xp-bright); color: #422006; border-color: var(--xp-bright); }
-
-.topbar { background: var(--ink); color: var(--white); }
-.topbar .wrap {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: var(--s4); padding: var(--s3) var(--s4); flex-wrap: wrap;
-}
-.brand { font-family: var(--serif); font-size: 18px; white-space: nowrap; }
-.navlinks { display: flex; gap: var(--s1); flex-wrap: wrap; }
-.navlinks button { background: none; color: #CBD5E1; padding: 5px var(--s3); font-size: 14px; }
-.navlinks button:hover:not(:disabled) { color: var(--white); background: var(--ink-soft); }
-.navlinks button.on { background: #334155; color: var(--white); }
-
-.track { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
-.track > i { display: block; height: 100%; background: var(--xp-bright); }
-.track.dark > i { background: var(--ink); }
-
-.grid2  { display: grid; gap: var(--s3); grid-template-columns: 1fr 1fr; }
-.split  { display: grid; gap: var(--s4); grid-template-columns: 1fr 280px; }
-.split3 { display: grid; gap: var(--s4); grid-template-columns: 240px 1fr; }
-@media (max-width: 760px) {
-  .grid2, .split, .split3 { grid-template-columns: 1fr; }
-}
-
-.lesson {
-  display: flex; align-items: flex-start; gap: var(--s2);
-  width: 100%; text-align: left; background: none; color: var(--ink);
-  padding: var(--s2); border-radius: 6px; font-size: 14px;
-}
-.lesson:hover:not(:disabled) { background: var(--paper); }
-.lesson.on { background: var(--paper); font-weight: 600; }
-.lesson.done span { color: var(--gray-soft); text-decoration: line-through; }
-.lesson:disabled { color: var(--gray-soft); }
-.dot { flex: 0 0 auto; width: 16px; height: 16px; border-radius: 50%;
-       border: 1.5px solid var(--gray-soft); margin-top: 3px; }
-.dot.done { background: var(--ok); border-color: var(--ok); }
-.dot.here { border-color: var(--ink); border-width: 5px; }
-
-.row {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: var(--s3); padding: var(--s3) 0; border-bottom: 1px solid var(--line);
-}
-.row:last-child { border-bottom: none; }
-.rowbtn {
-  display: block; width: 100%; text-align: left; background: none; color: var(--ink);
-  padding: var(--s3); border-radius: 6px;
-}
-.rowbtn:hover:not(:disabled) { background: var(--paper); }
-.rowbtn.on { background: var(--paper); }
-
-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-th { text-align: left; font-weight: 400; color: var(--gray); font-size: 13px;
-     padding: var(--s2) var(--s3); border-bottom: 1px solid var(--line); }
-td { padding: var(--s3); border-bottom: 1px solid var(--line); vertical-align: middle; }
-tr:last-child td { border-bottom: none; }
-
-.bubble { max-width: 78%; padding: var(--s2) var(--s3); border-radius: var(--radius);
-          background: var(--paper); font-size: 14px; white-space: pre-wrap; }
-.bubble.mine { background: var(--ink); color: var(--white); }
-.msgline { display: flex; flex-direction: column; gap: var(--s1); margin-bottom: var(--s3); }
-.msgline.mine { align-items: flex-end; }
-
-.center-page { min-height: 100vh; display: flex; align-items: center;
-               justify-content: center; padding: var(--s5) var(--s4); }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);color:var(--ink);background:var(--paper);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--serif);font-weight:400;line-height:1.2}
+button{font-family:inherit;font-size:14px;cursor:pointer;border:none;border-radius:6px;padding:9px var(--s4);background:var(--ink);color:var(--white)}
+button:hover:not(:disabled){background:var(--ink-soft)}
+button:disabled{opacity:.5;cursor:not-allowed}
+button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+button.ghost:hover:not(:disabled){background:var(--paper)}
+button.plain{background:none;color:var(--gray);padding:0;font-size:14px}
+button.plain:hover:not(:disabled){color:var(--ink);background:none}
+button.danger{background:none;color:var(--alert);padding:0;font-size:13px}
+button.danger:hover:not(:disabled){background:none;text-decoration:underline}
+button.tiny{padding:4px var(--s2);font-size:12px}
+button.ok{background:var(--ok)}
+button.ok:hover:not(:disabled){background:#047857}
+input,select,textarea{font-family:inherit;font-size:14px;width:100%;padding:9px var(--s3);border:1px solid var(--line);border-radius:6px;background:var(--white);color:var(--ink)}
+textarea{resize:vertical;min-height:80px;line-height:1.5}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--ink);outline-offset:-1px}
+label{display:block;font-size:13px;color:var(--gray);margin-bottom:var(--s1)}
+.field{margin-bottom:var(--s3)}
+.wrap{max-width:960px;margin:0 auto;padding:0 var(--s4)}
+.card{background:var(--white);border:1px solid var(--line);border-radius:var(--radius);padding:var(--s4)}
+.card+.card{margin-top:var(--s3)}
+.eyebrow{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-soft)}
+.muted{color:var(--gray);font-size:13px}
+.error{color:var(--alert);font-size:13px;background:#FEF2F2;border:1px solid #FECACA;border-radius:6px;padding:var(--s2) var(--s3);margin-top:var(--s3)}
+.notice{color:#065F46;font-size:13px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:6px;padding:var(--s2) var(--s3);margin-top:var(--s3)}
+.warn{color:#78350F;font-size:13px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:var(--s2) var(--s3)}
+.todo{color:var(--gray);font-size:12px;background:var(--paper);border:1px dashed var(--line);border-radius:6px;padding:var(--s2) var(--s3)}
+.pill{display:inline-block;font-size:11px;padding:2px var(--s2);border-radius:999px;background:var(--paper);color:var(--gray);border:1px solid var(--line)}
+.pill.live{background:#ECFDF5;color:#065F46;border-color:#A7F3D0}
+.pill.wait{background:#FFFBEB;color:#78350F;border-color:#FDE68A}
+.pill.off{background:#FEF2F2;color:#991B1B;border-color:#FECACA}
+.pill.unread{background:var(--xp-bright);color:#422006;border-color:var(--xp-bright)}
+.topbar{background:var(--ink);color:var(--white)}
+.topbar .wrap{display:flex;align-items:center;justify-content:space-between;gap:var(--s4);padding:var(--s3) var(--s4);flex-wrap:wrap}
+.brand{font-family:var(--serif);font-size:18px;white-space:nowrap}
+.navlinks{display:flex;gap:var(--s1);flex-wrap:wrap}
+.navlinks button{background:none;color:#CBD5E1;padding:5px var(--s3);font-size:14px}
+.navlinks button:hover:not(:disabled){color:var(--white);background:var(--ink-soft)}
+.navlinks button.on{background:#334155;color:var(--white)}
+.track{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.track>i{display:block;height:100%;background:var(--xp-bright)}
+.track.dark>i{background:var(--ink)}
+.grid2{display:grid;gap:var(--s3);grid-template-columns:1fr 1fr}
+.split{display:grid;gap:var(--s4);grid-template-columns:1fr 280px}
+.split3{display:grid;gap:var(--s4);grid-template-columns:250px 1fr}
+@media(max-width:780px){.grid2,.split,.split3{grid-template-columns:1fr}}
+.lesson{display:flex;align-items:flex-start;gap:var(--s2);width:100%;text-align:left;background:none;color:var(--ink);padding:var(--s2);border-radius:6px;font-size:14px}
+.lesson:hover:not(:disabled){background:var(--paper)}
+.lesson.on{background:var(--paper);font-weight:600}
+.lesson.done span{color:var(--gray-soft);text-decoration:line-through}
+.lesson:disabled{color:var(--gray-soft)}
+.dot{flex:0 0 auto;width:16px;height:16px;border-radius:50%;border:1.5px solid var(--gray-soft);margin-top:3px}
+.dot.done{background:var(--ok);border-color:var(--ok)}
+.dot.here{border-color:var(--ink);border-width:5px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);padding:var(--s3) 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:none}
+.rowbtn{display:block;width:100%;text-align:left;background:none;color:var(--ink);padding:var(--s3);border-radius:6px}
+.rowbtn:hover:not(:disabled){background:var(--paper)}
+.rowbtn.on{background:var(--paper)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-weight:400;color:var(--gray);font-size:13px;padding:var(--s2) var(--s3);border-bottom:1px solid var(--line)}
+td{padding:var(--s3);border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+.bubble{max-width:78%;padding:var(--s2) var(--s3);border-radius:var(--radius);background:var(--paper);font-size:14px;white-space:pre-wrap}
+.bubble.mine{background:var(--ink);color:var(--white)}
+.msgline{display:flex;flex-direction:column;gap:var(--s1);margin-bottom:var(--s3)}
+.msgline.mine{align-items:flex-end}
+.center-page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:var(--s5) var(--s4)}
+.dl{display:grid;grid-template-columns:130px 1fr;gap:var(--s2) var(--s3);font-size:14px}
+.dl dt{color:var(--gray);font-size:13px}
+.check{display:flex;gap:var(--s2);align-items:flex-start;font-size:13px;color:var(--ink);line-height:1.45}
+.check input{width:auto;margin-top:3px;flex:0 0 auto}
 </style>
 </head>
 
@@ -158,11 +98,21 @@ tr:last-child td { border-bottom: none; }
 
 <script type="module">
 /* ==================================================================
-   1. CONNEXION À LA BASE
-   Ces deux valeurs sont publiques par conception : elles finissent
-   de toute façon dans le navigateur de chaque visiteur. Ce qui
-   protège les données, ce sont les règles RLS écrites dans Supabase.
+   1. RÉGLAGES DE L'ASSOCIATION
+   Les champs vides sont volontaires : remplis-les quand tu auras
+   ouvert HelloAsso et rédigé tes mentions légales. L'interface
+   s'adapte toute seule et n'affiche rien tant qu'ils sont vides.
    ================================================================== */
+const ASSO = {
+  nom:            "Sciences pour tous",
+  adhesionUrl:    "",   // ← lien HelloAsso vers la campagne d'adhésion
+  cotisation:     "",   // ← exemple : "5 €"
+  contactEmail:   "",   // ← adresse de contact de l'association
+  mentionsUrl:    "",   // ← lien vers les mentions légales
+  confidentUrl:   "",   // ← lien vers la politique de confidentialité
+  consentementUrl:"",   // ← lien vers le formulaire de consentement parental
+};
+
 const SUPABASE_URL = "https://psdgksngudmutxgfgdsa.supabase.co";
 const SUPABASE_KEY = "sb_publishable_djEYr000RbrX5N2GiC0RQg_jjHzfEpf";
 
@@ -179,8 +129,19 @@ const db = createClient(SUPABASE_URL, SUPABASE_KEY);
    ================================================================== */
 const XP_PER_LEVEL = 300;
 const levelOf = (xp) => Math.floor(xp / XP_PER_LEVEL) + 1;
+const TYPES = { video:"Vidéo", audio:"Audio", pdf:"Document", quiz:"Quiz", texte:"Lecture" };
+const ROLES = { eleve:"Élève", encadrant:"Encadrant", admin:"Bureau" };
 
-const TYPES = { video: "Vidéo", audio: "Audio", pdf: "Document", quiz: "Quiz", texte: "Lecture" };
+function ageFrom(dateStr) {
+  if (!dateStr) return null;
+  const b = new Date(dateStr);
+  if (isNaN(b)) return null;
+  const now = new Date();
+  let a = now.getFullYear() - b.getFullYear();
+  const m = now.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < b.getDate())) a--;
+  return a;
+}
 
 function embedUrl(url) {
   if (!url) return null;
@@ -191,12 +152,14 @@ function embedUrl(url) {
 function since(iso) {
   if (!iso) return "";
   const s = Math.floor((Date.now() - new Date(iso)) / 1000);
-  if (s < 60)     return "à l'instant";
-  if (s < 3600)   return `il y a ${Math.floor(s / 60)} min`;
-  if (s < 86400)  return `il y a ${Math.floor(s / 3600)} h`;
-  if (s < 604800) return `il y a ${Math.floor(s / 86400)} j`;
+  if (s < 60) return "à l'instant";
+  if (s < 3600) return `il y a ${Math.floor(s/60)} min`;
+  if (s < 86400) return `il y a ${Math.floor(s/3600)} h`;
+  if (s < 604800) return `il y a ${Math.floor(s/86400)} j`;
   return new Date(iso).toLocaleDateString("fr-FR");
 }
+
+const dateFr = (d) => (d ? new Date(d).toLocaleDateString("fr-FR") : "—");
 
 /* ==================================================================
    3. VITRINE PUBLIQUE
@@ -204,48 +167,44 @@ function since(iso) {
 function Vitrine({ onEnter }) {
   return html`
     <div>
-      <div class="topbar">
-        <div class="wrap">
-          <span class="brand">Sciences pour tous</span>
-          <button onClick=${onEnter}>Accéder à mon espace</button>
-        </div>
-      </div>
+      <div class="topbar"><div class="wrap">
+        <span class="brand">${ASSO.nom}</span>
+        <button onClick=${onEnter}>Accéder à mon espace</button>
+      </div></div>
 
       <div class="wrap" style="padding:var(--s6) var(--s4);max-width:740px">
         <p class="eyebrow">Association loi 1901</p>
         <h1 style="font-size:38px;margin:var(--s2) 0 var(--s4)">
-          Préparer le concours commun des IEP,<br/>sans payer une prépa privée.
-        </h1>
+          Préparer le concours commun des IEP,<br/>sans payer une prépa privée.</h1>
         <p style="font-size:17px;color:var(--gray);margin-bottom:var(--s5)">
-          Nous accompagnons gratuitement des lycéens vers le concours commun
-          des Instituts d'études politiques. Cours en ligne, suivi individuel
-          par un tuteur bénévole, et une communauté d'élèves qui avancent ensemble.
-        </p>
+          Nous accompagnons les lycéens vers le concours commun des Instituts
+          d'études politiques. Cours en ligne, suivi individuel par un encadrant
+          bénévole, et une communauté d'élèves qui avancent ensemble.</p>
         <button onClick=${onEnter} style="font-size:15px;padding:12px var(--s5)">
-          Rejoindre la préparation
-        </button>
+          Rejoindre la préparation</button>
+        ${ASSO.cotisation && html`<p class="muted" style="margin-top:var(--s3)">
+          L'accès à la plateforme est réservé aux adhérents — cotisation ${ASSO.cotisation} par an.</p>`}
       </div>
 
-      <div class="wrap" style="padding-bottom:var(--s6)">
-        <div class="grid2">
-          <div class="card">
-            <h3 style="font-size:19px;margin-bottom:var(--s2)">Des cours structurés</h3>
-            <p class="muted">Chaque thème est découpé en leçons courtes — vidéo, fiche,
-              podcast, quiz — que tu suis à ton rythme, dans l'ordre.</p>
-          </div>
-          <div class="card">
-            <h3 style="font-size:19px;margin-bottom:var(--s2)">Un tuteur pour toi</h3>
-            <p class="muted">Un bénévole suit ta progression, corrige tes dissertations
-              et répond à tes questions tout au long de l'année.</p>
-          </div>
-        </div>
-      </div>
+      <div class="wrap" style="padding-bottom:var(--s6)"><div class="grid2">
+        <div class="card">
+          <h3 style="font-size:19px;margin-bottom:var(--s2)">Des cours structurés</h3>
+          <p class="muted">Chaque thème est découpé en leçons courtes — vidéo, fiche,
+            podcast, quiz — que tu suis à ton rythme, dans l'ordre.</p></div>
+        <div class="card">
+          <h3 style="font-size:19px;margin-bottom:var(--s2)">Un encadrant pour toi</h3>
+          <p class="muted">Un bénévole suit ta progression, corrige tes dissertations
+            et répond à tes questions tout au long de l'année.</p></div>
+      </div></div>
 
-      <div style="border-top:1px solid var(--line);padding:var(--s4) 0">
-        <div class="wrap"><p class="muted">Sciences pour tous — association à but non lucratif</p></div>
-      </div>
-    </div>
-  `;
+      <div style="border-top:1px solid var(--line);padding:var(--s4) 0"><div class="wrap">
+        <p class="muted">${ASSO.nom} — association à but non lucratif</p>
+        <p class="muted" style="margin-top:var(--s2)">
+          ${ASSO.mentionsUrl ? html`<a href=${ASSO.mentionsUrl}>Mentions légales</a> · ` : ""}
+          ${ASSO.confidentUrl ? html`<a href=${ASSO.confidentUrl}>Politique de confidentialité</a>` : ""}
+        </p>
+      </div></div>
+    </div>`;
 }
 
 /* ==================================================================
@@ -253,63 +212,112 @@ function Vitrine({ onEnter }) {
    ================================================================== */
 function Connexion({ onBack }) {
   const [mode, setMode] = useState("login");
-  const [name, setName] = useState("");
-  const [mail, setMail] = useState("");
-  const [pass, setPass] = useState("");
+  const [f, setF] = useState({ name:"", mail:"", pass:"", birth:"", phone:"", pname:"", pmail:"" });
+  const [okAdhesion, setOkAdhesion] = useState(false);
+  const [okConsent, setOkConsent] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [err,  setErr]  = useState("");
+  const [err, setErr] = useState("");
   const [done, setDone] = useState("");
+
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const age = ageFrom(f.birth);
+  const minor = age !== null && age < 15;
 
   async function submit(e) {
     e.preventDefault();
     setErr(""); setDone(""); setBusy(true);
+
     if (mode === "login") {
-      const { error } = await db.auth.signInWithPassword({ email: mail, password: pass });
+      const { error } = await db.auth.signInWithPassword({ email: f.mail, password: f.pass });
       if (error) setErr("Adresse e-mail ou mot de passe incorrect.");
-    } else {
-      if (name.trim().length < 3) { setErr("Indique ton prénom et ton nom."); setBusy(false); return; }
-      if (pass.length < 8) { setErr("Le mot de passe doit faire au moins 8 caractères."); setBusy(false); return; }
-      const { data, error } = await db.auth.signUp({
-        email: mail, password: pass, options: { data: { full_name: name.trim() } },
-      });
-      if (error) setErr(error.message);
-      else if (!data.session) setDone("Compte créé. Vérifie ta boîte mail pour confirmer ton adresse, puis reviens te connecter.");
+      setBusy(false); return;
     }
+
+    if (f.name.trim().length < 3)  { setErr("Indique ton prénom et ton nom."); setBusy(false); return; }
+    if (age === null)              { setErr("Indique ta date de naissance."); setBusy(false); return; }
+    if (age < 10 || age > 100)     { setErr("Cette date de naissance ne semble pas correcte."); setBusy(false); return; }
+    if (f.pass.length < 8)         { setErr("Le mot de passe doit faire au moins 8 caractères."); setBusy(false); return; }
+    if (!okAdhesion)               { setErr("Tu dois reconnaître la condition d'adhésion."); setBusy(false); return; }
+    if (minor && (!f.pmail.trim() || !f.pname.trim())) {
+      setErr("En dessous de 15 ans, les coordonnées d'un parent sont obligatoires."); setBusy(false); return; }
+    if (minor && !okConsent) {
+      setErr("En dessous de 15 ans, l'accord d'un parent est obligatoire."); setBusy(false); return; }
+
+    const { data, error } = await db.auth.signUp({
+      email: f.mail, password: f.pass,
+      options: { data: {
+        full_name: f.name.trim(), birthdate: f.birth,
+        phone: f.phone.trim(), parent_name: f.pname.trim(), parent_email: f.pmail.trim(),
+      }},
+    });
+    if (error) setErr(error.message);
+    else setDone(data.session
+      ? "Compte créé. Il doit maintenant être validé par l'association."
+      : "Compte créé. Confirme ton adresse via l'e-mail reçu, puis reconnecte-toi. Ton compte sera ensuite validé par l'association.");
     setBusy(false);
   }
 
   return html`
     <div class="center-page" style="background:var(--ink)">
-      <div style="width:100%;max-width:380px">
-        <p style="font-family:var(--serif);font-size:28px;color:var(--white)">Sciences pour tous</p>
+      <div style="width:100%;max-width:420px">
+        <p style="font-family:var(--serif);font-size:28px;color:var(--white)">${ASSO.nom}</p>
         <p style="color:var(--gray-soft);font-size:14px;margin-bottom:var(--s5)">
           Préparation au concours commun des IEP</p>
 
         <form class="card" onSubmit=${submit}>
           ${mode === "signup" && html`
-            <div class="field">
-              <label>Prénom et nom</label>
-              <input value=${name} onInput=${(e) => setName(e.target.value)} autocomplete="name" />
-            </div>`}
-          <div class="field">
-            <label>Adresse e-mail</label>
-            <input type="email" required value=${mail} onInput=${(e) => setMail(e.target.value)} autocomplete="email" />
-          </div>
-          <div>
-            <label>Mot de passe</label>
-            <input type="password" required value=${pass} onInput=${(e) => setPass(e.target.value)}
-                   autocomplete=${mode === "login" ? "current-password" : "new-password"} />
-          </div>
-          ${err  && html`<p class="error">${err}</p>`}
+            <div class="field"><label>Prénom et nom</label>
+              <input value=${f.name} onInput=${set("name")} autocomplete="name" /></div>
+            <div class="field"><label>Date de naissance</label>
+              <input type="date" value=${f.birth} onInput=${set("birth")} /></div>`}
+
+          <div class="field"><label>Adresse e-mail</label>
+            <input type="email" required value=${f.mail} onInput=${set("mail")} autocomplete="email" /></div>
+
+          <div class="field"><label>Mot de passe</label>
+            <input type="password" required value=${f.pass} onInput=${set("pass")}
+              autocomplete=${mode === "login" ? "current-password" : "new-password"} /></div>
+
+          ${mode === "signup" && html`
+            <div class="field"><label>Téléphone (facultatif)</label>
+              <input value=${f.phone} onInput=${set("phone")} autocomplete="tel" /></div>
+
+            ${minor && html`
+              <div class="warn" style="margin-bottom:var(--s3)">
+                Tu as moins de 15 ans. La loi impose l'accord d'un de tes parents
+                pour créer ton compte. Ses coordonnées sont donc obligatoires.
+              </div>
+              <div class="field"><label>Nom du parent ou responsable légal</label>
+                <input value=${f.pname} onInput=${set("pname")} /></div>
+              <div class="field"><label>Adresse e-mail du parent</label>
+                <input type="email" value=${f.pmail} onInput=${set("pmail")} /></div>
+              <label class="check" style="margin-bottom:var(--s3)">
+                <input type="checkbox" checked=${okConsent} onChange=${(e)=>setOkConsent(e.target.checked)} />
+                <span>Mon parent est informé de mon inscription et acceptera d'être
+                  contacté par l'association pour donner son accord écrit.
+                  ${ASSO.consentementUrl && html` <a href=${ASSO.consentementUrl}>Voir le formulaire</a>`}</span>
+              </label>`}
+
+            <label class="check" style="margin-bottom:var(--s3)">
+              <input type="checkbox" checked=${okAdhesion} onChange=${(e)=>setOkAdhesion(e.target.checked)} />
+              <span>Je comprends que l'accès à la plateforme est réservé aux adhérents
+                de l'association, et que mon compte sera ouvert après vérification de mon adhésion.
+                ${ASSO.adhesionUrl && html` <a href=${ASSO.adhesionUrl}>Adhérer maintenant</a>`}</span>
+            </label>
+
+            ${!ASSO.adhesionUrl && html`<p class="todo" style="margin-bottom:var(--s3)">
+              Lien d'adhésion HelloAsso à renseigner dans les réglages du fichier.</p>`}`}
+
+          ${err && html`<p class="error">${err}</p>`}
           ${done && html`<p class="notice">${done}</p>`}
-          <button style="width:100%;margin-top:var(--s4)" disabled=${busy}>
-            ${busy ? "Un instant…" : mode === "login" ? "Se connecter" : "Créer mon compte"}
-          </button>
+
+          <button style="width:100%;margin-top:var(--s3)" disabled=${busy}>
+            ${busy ? "Un instant…" : mode === "login" ? "Se connecter" : "Créer mon compte"}</button>
+
           <div style="text-align:center;margin-top:var(--s3)">
-            <button type="button" class="plain"
-              onClick=${() => { setMode(mode === "login" ? "signup" : "login"); setErr(""); setDone(""); }}>
-              ${mode === "login" ? "Pas encore de compte ? En créer un" : "J'ai déjà un compte"}
-            </button>
+            <button type="button" class="plain" onClick=${() => {
+              setMode(mode === "login" ? "signup" : "login"); setErr(""); setDone(""); }}>
+              ${mode === "login" ? "Pas encore de compte ? En créer un" : "J'ai déjà un compte"}</button>
           </div>
         </form>
 
@@ -317,12 +325,59 @@ function Connexion({ onBack }) {
           <button class="plain" style="color:var(--gray-soft)" onClick=${onBack}>Retour à l'accueil</button>
         </div>
       </div>
-    </div>
-  `;
+    </div>`;
 }
 
 /* ==================================================================
-   5. ESPACE ÉLÈVE — ACCUEIL
+   5. COMPTE EN ATTENTE DE VALIDATION
+   ================================================================== */
+function EnAttente({ me, details }) {
+  const age = ageFrom(details?.birthdate);
+  const minor = age !== null && age < 15;
+  return html`
+    <div class="center-page">
+      <div style="width:100%;max-width:560px">
+        <p class="eyebrow">${ASSO.nom}</p>
+        <h1 style="font-size:28px;margin:var(--s2) 0 var(--s3)">Ton compte attend d'être ouvert</h1>
+        <p class="muted" style="margin-bottom:var(--s4)">
+          Bonjour ${me.full_name.split(" ")[0]}. Ton inscription est enregistrée. L'association
+          doit maintenant vérifier deux points avant de te donner accès aux cours.</p>
+
+        <div class="card">
+          <div class="row">
+            <div><p style="font-size:14px">1. Ton adhésion à l'association</p>
+              <p class="muted">${ASSO.cotisation
+                ? `Cotisation annuelle de ${ASSO.cotisation}.`
+                : "Adhésion à régler auprès de l'association."}</p></div>
+            ${ASSO.adhesionUrl
+              ? html`<a href=${ASSO.adhesionUrl}><button class="ghost tiny">Adhérer</button></a>`
+              : html`<span class="pill wait">à venir</span>`}
+          </div>
+
+          ${minor && html`
+            <div class="row">
+              <div><p style="font-size:14px">2. L'accord écrit de tes parents</p>
+                <p class="muted">Obligatoire en dessous de 15 ans. L'association contactera
+                  ${details?.parent_email || "ton parent"}.</p></div>
+              ${ASSO.consentementUrl
+                ? html`<a href=${ASSO.consentementUrl}><button class="ghost tiny">Formulaire</button></a>`
+                : html`<span class="pill wait">à venir</span>`}
+            </div>`}
+        </div>
+
+        <p class="muted" style="margin-top:var(--s4)">
+          Une fois ces points vérifiés, ton compte sera ouvert et tu recevras l'accès
+          aux cours, au forum et à ton encadrant.
+          ${ASSO.contactEmail ? html` Une question ? Écris à ${ASSO.contactEmail}.` : ""}</p>
+
+        <button class="ghost" style="margin-top:var(--s4)" onClick=${() => db.auth.signOut()}>
+          Se déconnecter</button>
+      </div>
+    </div>`;
+}
+
+/* ==================================================================
+   6. ESPACE ÉLÈVE
    ================================================================== */
 function MesCours({ me, courses, done, xp, onOpen }) {
   const lvl = levelOf(xp), into = xp % XP_PER_LEVEL;
@@ -334,55 +389,46 @@ function MesCours({ me, courses, done, xp, onOpen }) {
       <div class="card" style="margin-bottom:var(--s5)">
         <div style="display:flex;align-items:baseline;gap:var(--s3);margin-bottom:var(--s3)">
           <span style="font-family:var(--serif);font-size:30px">${xp}</span>
-          <span class="muted">XP · niveau ${lvl}</span>
-        </div>
-        <div class="track"><i style=${`width:${(into / XP_PER_LEVEL) * 100}%`}></i></div>
-        <p class="muted" style="margin-top:var(--s2)">${XP_PER_LEVEL - into} XP avant le niveau ${lvl + 1}</p>
+          <span class="muted">XP · niveau ${lvl}</span></div>
+        <div class="track"><i style=${`width:${(into/XP_PER_LEVEL)*100}%`}></i></div>
+        <p class="muted" style="margin-top:var(--s2)">${XP_PER_LEVEL-into} XP avant le niveau ${lvl+1}</p>
       </div>
 
       ${courses.length === 0 && html`<div class="card"><p class="muted">Aucun cours publié pour l'instant.</p></div>`}
-
       <div class="grid2">
         ${courses.map((c) => {
           const n = c.lessons.filter((l) => done.has(l.id)).length;
-          const pct = c.lessons.length ? Math.round((n / c.lessons.length) * 100) : 0;
-          return html`
-            <div class="card" key=${c.id}>
-              <p class="eyebrow">${c.discipline || "Cours"}</p>
-              <h3 style="font-size:21px;margin:var(--s1) 0 var(--s3)">${c.title}</h3>
-              <div class="track dark" style="margin-bottom:var(--s2)"><i style=${`width:${pct}%`}></i></div>
-              <p class="muted" style="margin-bottom:var(--s3)">${n} / ${c.lessons.length} leçons · ${pct} %</p>
-              <button class="ghost" onClick=${() => onOpen(c.id)}>${n === 0 ? "Commencer" : "Continuer"}</button>
-            </div>`;
+          const pct = c.lessons.length ? Math.round((n/c.lessons.length)*100) : 0;
+          return html`<div class="card" key=${c.id}>
+            <p class="eyebrow">${c.discipline || "Cours"}</p>
+            <h3 style="font-size:21px;margin:var(--s1) 0 var(--s3)">${c.title}</h3>
+            <div class="track dark" style="margin-bottom:var(--s2)"><i style=${`width:${pct}%`}></i></div>
+            <p class="muted" style="margin-bottom:var(--s3)">${n} / ${c.lessons.length} leçons · ${pct} %</p>
+            <button class="ghost" onClick=${() => onOpen(c.id)}>${n === 0 ? "Commencer" : "Continuer"}</button>
+          </div>`;
         })}
       </div>
-    </div>
-  `;
+    </div>`;
 }
 
-/* ==================================================================
-   6. PAGE D'UN COURS
-   ================================================================== */
-function Cours({ course, done, onToggle, onBack, busy }) {
+function Cours({ course, done, onToggle, onBack, busy, readOnly }) {
   const firstOpen = course.lessons.find((l) => !done.has(l.id)) || course.lessons[0];
   const [activeId, setActiveId] = useState(firstOpen ? firstOpen.id : null);
 
   if (!course.lessons.length) return html`
-    <div>
-      <button class="plain" onClick=${onBack}>← Tous mes cours</button>
+    <div><button class="plain" onClick=${onBack}>← Tous les cours</button>
       <h1 style="font-size:26px;margin-top:var(--s3)">${course.title}</h1>
-      <p class="muted" style="margin-top:var(--s3)">Ce cours ne contient pas encore de leçon.</p>
-    </div>`;
+      <p class="muted" style="margin-top:var(--s3)">Ce cours ne contient pas encore de leçon.</p></div>`;
 
-  const lesson    = course.lessons.find((l) => l.id === activeId) || course.lessons[0];
-  const index     = course.lessons.findIndex((l) => l.id === lesson.id);
+  const lesson = course.lessons.find((l) => l.id === activeId) || course.lessons[0];
+  const index = course.lessons.findIndex((l) => l.id === lesson.id);
   const firstTodo = course.lessons.findIndex((l) => !done.has(l.id));
-  const isDone    = done.has(lesson.id);
-  const embed     = embedUrl(lesson.content_url);
+  const isDone = done.has(lesson.id);
+  const embed = embedUrl(lesson.content_url);
 
   return html`
     <div>
-      <button class="plain" onClick=${onBack}>← Tous mes cours</button>
+      <button class="plain" onClick=${onBack}>← Tous les cours</button>
       <p class="eyebrow" style="margin-top:var(--s3)">${course.discipline || "Cours"}</p>
       <h1 style="font-size:26px;margin-bottom:var(--s4)">${course.title}</h1>
 
@@ -390,28 +436,26 @@ function Cours({ course, done, onToggle, onBack, busy }) {
         <div class="card">
           ${embed
             ? html`<div style="position:relative;padding-top:56.25%;margin-bottom:var(--s4)">
-                     <iframe src=${embed} title=${lesson.title} allowfullscreen
-                       style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:6px"></iframe>
-                   </div>`
+                <iframe src=${embed} title=${lesson.title} allowfullscreen
+                  style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:6px"></iframe></div>`
             : lesson.content_url
               ? html`<div style="margin-bottom:var(--s4)">
-                       <a href=${lesson.content_url} target="_blank" rel="noopener">Ouvrir le contenu de la leçon</a>
-                     </div>`
+                  <a href=${lesson.content_url} target="_blank" rel="noopener">Ouvrir le contenu de la leçon</a></div>`
               : html`<div style="background:var(--paper);border-radius:6px;padding:var(--s6);text-align:center;margin-bottom:var(--s4)">
-                       <p class="muted">Le contenu de cette leçon sera ajouté prochainement.</p>
-                     </div>`}
+                  <p class="muted">Le contenu de cette leçon sera ajouté prochainement.</p></div>`}
 
-          <p class="muted">Leçon ${index + 1} sur ${course.lessons.length} · ${TYPES[lesson.type] || lesson.type}${lesson.duration_min ? ` · ${lesson.duration_min} min` : ""}</p>
+          <p class="muted">Leçon ${index+1} sur ${course.lessons.length} · ${TYPES[lesson.type] || lesson.type}${lesson.duration_min ? ` · ${lesson.duration_min} min` : ""}</p>
           <h2 style="font-size:21px;margin:var(--s1) 0 var(--s4)">${lesson.title}</h2>
           ${lesson.body && html`<p style="margin-bottom:var(--s4);white-space:pre-wrap">${lesson.body}</p>`}
 
-          <div style="border-top:1px solid var(--line);padding-top:var(--s3);display:flex;
-                      align-items:center;justify-content:space-between;gap:var(--s3);flex-wrap:wrap">
+          <div style="border-top:1px solid var(--line);padding-top:var(--s3);display:flex;align-items:center;justify-content:space-between;gap:var(--s3);flex-wrap:wrap">
             <span style="color:var(--xp);font-size:14px">
               ${isDone ? `${lesson.xp} XP acquis` : `+${lesson.xp} XP à la validation`}</span>
-            <button class=${isDone ? "ghost" : ""} disabled=${busy} onClick=${() => onToggle(lesson.id, isDone)}>
-              ${isDone ? "Annuler la validation" : "Marquer comme terminée"}
-            </button>
+            ${readOnly
+              ? html`<span class="muted">Aperçu encadrant</span>`
+              : html`<button class=${isDone ? "ghost" : ""} disabled=${busy}
+                       onClick=${() => onToggle(lesson.id, isDone)}>
+                       ${isDone ? "Annuler la validation" : "Marquer comme terminée"}</button>`}
           </div>
         </div>
 
@@ -419,42 +463,36 @@ function Cours({ course, done, onToggle, onBack, busy }) {
           <p class="eyebrow" style="margin-bottom:var(--s3)">Progression</p>
           ${course.lessons.map((l, i) => {
             const complete = done.has(l.id);
-            const locked   = firstTodo !== -1 && i > firstTodo;
-            return html`
-              <button key=${l.id} disabled=${locked} onClick=${() => setActiveId(l.id)}
-                class=${["lesson", complete ? "done" : "", l.id === lesson.id ? "on" : ""].join(" ")}>
-                <span class=${["dot", complete ? "done" : "", l.id === lesson.id && !complete ? "here" : ""].join(" ")}></span>
-                <span>${l.title}</span>
-              </button>`;
+            const locked = !readOnly && firstTodo !== -1 && i > firstTodo;
+            return html`<button key=${l.id} disabled=${locked} onClick=${() => setActiveId(l.id)}
+              class=${["lesson", complete?"done":"", l.id===lesson.id?"on":""].join(" ")}>
+              <span class=${["dot", complete?"done":"", l.id===lesson.id&&!complete?"here":""].join(" ")}></span>
+              <span>${l.title}</span></button>`;
           })}
-          <p class="muted" style="margin-top:var(--s3);font-size:12px">
-            Les leçons se débloquent une à une, dans l'ordre.</p>
         </div>
       </div>
-    </div>
-  `;
+    </div>`;
 }
 
 /* ==================================================================
-   7. FORUM GÉNÉRAL
+   7. FORUM
    ================================================================== */
 function Forum({ me }) {
   const [threads, setThreads] = useState([]);
-  const [open, setOpen]       = useState(null);
+  const [open, setOpen] = useState(null);
   const [replies, setReplies] = useState([]);
-  const [title, setTitle]     = useState("");
-  const [body, setBody]       = useState("");
-  const [answer, setAnswer]   = useState("");
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [answer, setAnswer] = useState("");
   const [writing, setWriting] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [err, setErr]         = useState("");
+  const [err, setErr] = useState("");
 
   useEffect(() => { loadThreads(); }, []);
 
   async function loadThreads() {
     setLoading(true);
-    const { data, error } = await db
-      .from("forum_threads")
+    const { data, error } = await db.from("forum_threads")
       .select("id, title, body, created_at, author_id, profiles(full_name), forum_replies(id)")
       .order("created_at", { ascending: false });
     if (error) setErr(error.message); else setThreads(data || []);
@@ -463,8 +501,7 @@ function Forum({ me }) {
 
   async function openThread(t) {
     setOpen(t); setReplies([]);
-    const { data } = await db
-      .from("forum_replies")
+    const { data } = await db.from("forum_replies")
       .select("id, body, created_at, author_id, profiles(full_name)")
       .eq("thread_id", t.id).order("created_at");
     setReplies(data || []);
@@ -484,44 +521,33 @@ function Forum({ me }) {
     if (!answer.trim()) return;
     const { error } = await db.from("forum_replies")
       .insert({ thread_id: open.id, author_id: me.id, body: answer.trim() });
-    if (error) setErr(error.message);
-    else { setAnswer(""); openThread(open); loadThreads(); }
+    if (error) setErr(error.message); else { setAnswer(""); openThread(open); }
   }
 
   async function remove(id, table, after) {
     if (!confirm("Supprimer définitivement ?")) return;
-    await db.from(table).delete().eq("id", id);
-    after();
+    await db.from(table).delete().eq("id", id); after();
   }
 
   if (open) return html`
     <div>
       <button class="plain" onClick=${() => { setOpen(null); loadThreads(); }}>← Retour au forum</button>
       <h1 style="font-size:24px;margin:var(--s3) 0 var(--s1)">${open.title}</h1>
-      <p class="muted" style="margin-bottom:var(--s4)">
-        ${open.profiles?.full_name || "Anonyme"} · ${since(open.created_at)}</p>
-
-      ${open.body && html`<div class="card" style="margin-bottom:var(--s4)">
-        <p style="white-space:pre-wrap">${open.body}</p></div>`}
-
+      <p class="muted" style="margin-bottom:var(--s4)">${open.profiles?.full_name || "Anonyme"} · ${since(open.created_at)}</p>
+      ${open.body && html`<div class="card" style="margin-bottom:var(--s4)"><p style="white-space:pre-wrap">${open.body}</p></div>`}
       <div class="card">
-        ${replies.length === 0 && html`<p class="muted">Aucune réponse pour l'instant. Sois le premier.</p>`}
-        ${replies.map((r) => html`
-          <div class="row" key=${r.id} style="align-items:flex-start">
-            <div style="flex:1">
-              <p class="muted" style="margin-bottom:var(--s1)">
-                ${r.profiles?.full_name || "Anonyme"} · ${since(r.created_at)}</p>
-              <p style="white-space:pre-wrap">${r.body}</p>
-            </div>
-            ${(r.author_id === me.id || me.role === "admin") && html`
-              <button class="danger" onClick=${() => remove(r.id, "forum_replies", () => openThread(open))}>Supprimer</button>`}
-          </div>`)}
+        ${replies.length === 0 && html`<p class="muted">Aucune réponse pour l'instant.</p>`}
+        ${replies.map((r) => html`<div class="row" key=${r.id} style="align-items:flex-start">
+          <div style="flex:1">
+            <p class="muted" style="margin-bottom:var(--s1)">${r.profiles?.full_name || "Anonyme"} · ${since(r.created_at)}</p>
+            <p style="white-space:pre-wrap">${r.body}</p></div>
+          ${(r.author_id === me.id || me.role !== "eleve") && html`
+            <button class="danger" onClick=${() => remove(r.id, "forum_replies", () => openThread(open))}>Supprimer</button>`}
+        </div>`)}
       </div>
-
       <form onSubmit=${reply} style="margin-top:var(--s4)">
         <label>Ta réponse</label>
-        <textarea value=${answer} onInput=${(e) => setAnswer(e.target.value)}
-                  placeholder="Écris ta réponse…"></textarea>
+        <textarea value=${answer} onInput=${(e)=>setAnswer(e.target.value)}></textarea>
         <button style="margin-top:var(--s2)" disabled=${!answer.trim()}>Répondre</button>
       </form>
       ${err && html`<p class="error">${err}</p>`}
@@ -530,66 +556,50 @@ function Forum({ me }) {
   return html`
     <div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--s3);margin-bottom:var(--s4)">
-        <div>
-          <h1 style="font-size:26px">Forum général</h1>
-          <p class="muted">Pose tes questions, partage tes fiches, entraide-toi.</p>
-        </div>
+        <div><h1 style="font-size:26px">Forum général</h1>
+          <p class="muted">Pose tes questions, partage tes fiches, entraide-toi.</p></div>
         <button onClick=${() => setWriting(!writing)}>${writing ? "Annuler" : "Nouvelle discussion"}</button>
       </div>
-
-      ${writing && html`
-        <form class="card" onSubmit=${post} style="margin-bottom:var(--s4)">
-          <div class="field">
-            <label>Sujet</label>
-            <input value=${title} onInput=${(e) => setTitle(e.target.value)}
-                   placeholder="Comment structurer une introduction de dissertation ?" />
-          </div>
-          <div class="field">
-            <label>Message (facultatif)</label>
-            <textarea value=${body} onInput=${(e) => setBody(e.target.value)}></textarea>
-          </div>
-          <button disabled=${title.trim().length < 5}>Publier</button>
-        </form>`}
-
+      ${writing && html`<form class="card" onSubmit=${post} style="margin-bottom:var(--s4)">
+        <div class="field"><label>Sujet</label>
+          <input value=${title} onInput=${(e)=>setTitle(e.target.value)} /></div>
+        <div class="field"><label>Message (facultatif)</label>
+          <textarea value=${body} onInput=${(e)=>setBody(e.target.value)}></textarea></div>
+        <button disabled=${title.trim().length < 5}>Publier</button></form>`}
       ${loading && html`<p class="muted">Chargement…</p>`}
-      ${!loading && threads.length === 0 && html`
-        <div class="card"><p class="muted">Le forum est vide. Lance la première discussion.</p></div>`}
-
+      ${!loading && threads.length === 0 && html`<div class="card"><p class="muted">Le forum est vide.</p></div>`}
       <div class="card" style="padding:var(--s2)">
-        ${threads.map((t) => html`
-          <div key=${t.id} style="display:flex;align-items:center;gap:var(--s2)">
-            <button class="rowbtn" onClick=${() => openThread(t)}>
-              <span style="display:block">${t.title}</span>
-              <span class="muted">${t.profiles?.full_name || "Anonyme"} · ${(t.forum_replies || []).length} réponses · ${since(t.created_at)}</span>
-            </button>
-            ${(t.author_id === me.id || me.role === "admin") && html`
-              <button class="danger" style="padding-right:var(--s3)"
-                      onClick=${() => remove(t.id, "forum_threads", loadThreads)}>Supprimer</button>`}
-          </div>`)}
+        ${threads.map((t) => html`<div key=${t.id} style="display:flex;align-items:center;gap:var(--s2)">
+          <button class="rowbtn" onClick=${() => openThread(t)}>
+            <span style="display:block">${t.title}</span>
+            <span class="muted">${t.profiles?.full_name || "Anonyme"} · ${(t.forum_replies||[]).length} réponses · ${since(t.created_at)}</span>
+          </button>
+          ${(t.author_id === me.id || me.role !== "eleve") && html`
+            <button class="danger" style="padding-right:var(--s3)"
+              onClick=${() => remove(t.id, "forum_threads", loadThreads)}>Supprimer</button>`}
+        </div>`)}
       </div>
       ${err && html`<p class="error">${err}</p>`}
-    </div>
-  `;
+    </div>`;
 }
 
 /* ==================================================================
-   8. MESSAGERIE PRIVÉE ÉLÈVE / TUTEUR
+   8. MESSAGERIE
    ================================================================== */
 function Messagerie({ me, students }) {
-  const isAdmin = me.role === "admin";
-  const [target, setTarget] = useState(isAdmin ? (students[0]?.id || null) : me.id);
-  const [msgs, setMsgs]     = useState([]);
-  const [text, setText]     = useState("");
-  const [busy, setBusy]     = useState(false);
-  const [err, setErr]       = useState("");
+  const staff = me.role !== "eleve";
+  const [target, setTarget] = useState(staff ? (students[0]?.id || null) : me.id);
+  const [msgs, setMsgs] = useState([]);
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
   const endRef = useRef(null);
 
   useEffect(() => { if (target) loadMsgs(); }, [target]);
   useEffect(() => { endRef.current?.scrollIntoView({ block: "nearest" }); }, [msgs]);
 
   async function loadMsgs() {
-    const { data, error } = await db
-      .from("messages")
+    const { data, error } = await db.from("messages")
       .select("id, body, created_at, sender_id, read_at, profiles!messages_sender_id_fkey(full_name)")
       .eq("student_id", target).order("created_at");
     if (error) { setErr(error.message); return; }
@@ -602,8 +612,7 @@ function Messagerie({ me, students }) {
     e.preventDefault();
     if (!text.trim() || !target) return;
     setBusy(true);
-    const { error } = await db.from("messages")
-      .insert({ student_id: target, sender_id: me.id, body: text.trim() });
+    const { error } = await db.from("messages").insert({ student_id: target, sender_id: me.id, body: text.trim() });
     if (error) setErr(error.message); else { setText(""); loadMsgs(); }
     setBusy(false);
   }
@@ -612,112 +621,308 @@ function Messagerie({ me, students }) {
     <div>
       <div class="card" style="min-height:280px;max-height:460px;overflow-y:auto">
         ${msgs.length === 0 && html`<p class="muted">
-          ${isAdmin ? "Aucun message avec cet élève." : "Aucun message pour l'instant. Écris à ton tuteur, il te répondra."}</p>`}
-        ${msgs.map((m) => html`
-          <div key=${m.id} class=${"msgline" + (m.sender_id === me.id ? " mine" : "")}>
-            <span class="muted" style="font-size:12px">
-              ${m.sender_id === me.id ? "Toi" : (m.profiles?.full_name || "Ton tuteur")} · ${since(m.created_at)}</span>
-            <span class=${"bubble" + (m.sender_id === me.id ? " mine" : "")}>${m.body}</span>
-          </div>`)}
+          ${staff ? "Aucun message avec cet élève." : "Aucun message. Écris à ton encadrant, il te répondra."}</p>`}
+        ${msgs.map((m) => html`<div key=${m.id} class=${"msgline" + (m.sender_id === me.id ? " mine" : "")}>
+          <span class="muted" style="font-size:12px">
+            ${m.sender_id === me.id ? "Toi" : (m.profiles?.full_name || "Encadrant")} · ${since(m.created_at)}</span>
+          <span class=${"bubble" + (m.sender_id === me.id ? " mine" : "")}>${m.body}</span>
+        </div>`)}
         <div ref=${endRef}></div>
       </div>
-
       <form onSubmit=${send} style="display:flex;gap:var(--s2);margin-top:var(--s3)">
-        <input value=${text} onInput=${(e) => setText(e.target.value)} placeholder="Écrire un message…" />
+        <input value=${text} onInput=${(e)=>setText(e.target.value)} placeholder="Écrire un message…" />
         <button disabled=${busy || !text.trim()}>Envoyer</button>
       </form>
       ${err && html`<p class="error">${err}</p>`}
     </div>`;
 
-  if (!isAdmin) return html`
+  if (!staff) return html`
     <div>
-      <h1 style="font-size:26px">Mon tuteur</h1>
-      <p class="muted" style="margin-bottom:var(--s4)">
-        Cette conversation est privée : seuls toi et l'équipe encadrante y ont accès.</p>
+      <h1 style="font-size:26px">Mon encadrant</h1>
+      <p class="warn" style="margin:var(--s3) 0 var(--s4)">
+        Cette conversation est privée vis-à-vis des autres élèves. Elle reste
+        consultable par les responsables de l'association, qui veillent à la
+        sécurité des échanges entre adultes et mineurs.</p>
       ${panel}
     </div>`;
 
   return html`
     <div>
       <h1 style="font-size:26px">Messagerie</h1>
-      <p class="muted" style="margin-bottom:var(--s4)">Échanges privés avec chaque élève.</p>
+      <p class="muted" style="margin-bottom:var(--s4)">
+        ${me.role === "admin"
+          ? "Toutes les conversations de l'association, y compris celles des encadrants."
+          : "Les conversations de tes élèves rattachés."}</p>
       ${students.length === 0
-        ? html`<div class="card"><p class="muted">Aucun élève inscrit pour l'instant.</p></div>`
-        : html`
-          <div class="split3">
+        ? html`<div class="card"><p class="muted">Aucun élève à afficher.</p></div>`
+        : html`<div class="split3">
             <div class="card" style="padding:var(--s2);align-self:start">
-              ${students.map((s) => html`
-                <button key=${s.id} class=${"rowbtn" + (s.id === target ? " on" : "")}
-                        onClick=${() => setTarget(s.id)}>
-                  <span style="display:block;font-size:14px">${s.full_name}</span>
-                  ${s.unread > 0 && html`<span class="pill unread">${s.unread} non lu</span>`}
-                </button>`)}
+              ${students.map((s) => html`<button key=${s.id}
+                class=${"rowbtn" + (s.id === target ? " on" : "")} onClick=${() => setTarget(s.id)}>
+                <span style="display:block;font-size:14px">${s.full_name}</span>
+                ${s.unread > 0 && html`<span class="pill unread">${s.unread} non lu</span>`}
+              </button>`)}
             </div>
             ${panel}
           </div>`}
-    </div>
-  `;
+    </div>`;
 }
 
 /* ==================================================================
-   9. SUIVI DES ÉLÈVES (ADMIN)
+   9. LISTE DES ÉLÈVES ET FICHE INDIVIDUELLE
    ================================================================== */
-function Eleves({ rows, totalLessons, onSetRole }) {
+function Eleves({ me, rows, totalLessons, onOpen, title, subtitle }) {
   return html`
     <div>
-      <h1 style="font-size:26px">Suivi des élèves</h1>
-      <p class="muted" style="margin-bottom:var(--s4)">${rows.length} comptes</p>
+      <h1 style="font-size:26px">${title}</h1>
+      <p class="muted" style="margin-bottom:var(--s4)">${subtitle}</p>
+      ${rows.length === 0
+        ? html`<div class="card"><p class="muted">Aucun élève pour l'instant.</p></div>`
+        : html`<div class="card" style="padding:0;overflow-x:auto"><table>
+            <thead><tr><th>Nom</th><th>Statut</th><th>Leçons</th><th>XP</th><th style="width:150px">Avancement</th><th></th></tr></thead>
+            <tbody>${rows.map((r) => {
+              const pct = totalLessons ? Math.round((r.lessons_done/totalLessons)*100) : 0;
+              return html`<tr key=${r.id}>
+                <td>${r.full_name}</td>
+                <td><span class=${"pill " + (r.status==="active"?"live":r.status==="pending"?"wait":"off")}>
+                  ${r.status==="active"?"Actif":r.status==="pending"?"En attente":"Suspendu"}</span></td>
+                <td class="muted">${r.lessons_done} / ${totalLessons}</td>
+                <td>${r.xp}</td>
+                <td><div style="display:flex;align-items:center;gap:var(--s3)">
+                  <div class="track dark" style="flex:1">
+                    <i style=${`width:${pct}%;background:${pct<20?"var(--alert)":"var(--ink)"}`}></i></div>
+                  <span class="muted" style="font-size:12px">${pct} %</span></div></td>
+                <td><button class="ghost tiny" onClick=${() => onOpen(r.id)}>Fiche</button></td>
+              </tr>`;
+            })}</tbody></table></div>`}
+    </div>`;
+}
 
-      <div class="card" style="padding:0;overflow-x:auto">
-        <table>
-          <thead><tr>
-            <th>Nom</th><th>Leçons</th><th>XP</th><th style="width:170px">Avancement</th><th>Rôle</th>
-          </tr></thead>
-          <tbody>
-            ${rows.map((r) => {
-              const pct = totalLessons ? Math.round((r.lessons_done / totalLessons) * 100) : 0;
-              return html`
-                <tr key=${r.id}>
-                  <td>${r.full_name}</td>
-                  <td class="muted">${r.lessons_done} / ${totalLessons}</td>
-                  <td>${r.xp}</td>
-                  <td>
-                    <div style="display:flex;align-items:center;gap:var(--s3)">
-                      <div class="track dark" style="flex:1">
-                        <i style=${`width:${pct}%;background:${pct < 20 ? "var(--alert)" : "var(--ink)"}`}></i></div>
-                      <span class="muted" style="font-size:12px">${pct} %</span>
-                    </div>
-                  </td>
-                  <td>
-                    <select value=${r.role} onChange=${(e) => onSetRole(r.id, e.target.value)} style="width:auto">
-                      <option value="eleve">Élève</option>
-                      <option value="admin">Encadrant</option>
-                    </select>
-                  </td>
-                </tr>`;
-            })}
-          </tbody>
-        </table>
+function Fiche({ me, studentId, courses, tutors, onBack, reload }) {
+  const [p, setP] = useState(null);
+  const [d, setD] = useState(null);
+  const [doneIds, setDoneIds] = useState([]);
+  const [notes, setNotes] = useState("");
+  const [saved, setSaved] = useState("");
+  const [err, setErr] = useState("");
+  const isAdmin = me.role === "admin";
+
+  useEffect(() => { load(); }, [studentId]);
+
+  async function load() {
+    const { data: prof } = await db.from("profiles")
+      .select("id, full_name, role, status, tutor_id, created_at").eq("id", studentId).single();
+    const { data: det, error: e2 } = await db.from("student_details")
+      .select("*").eq("user_id", studentId).single();
+    const { data: comp } = await db.from("lesson_completions")
+      .select("lesson_id").eq("user_id", studentId);
+    if (e2) setErr(e2.message);
+    setP(prof); setD(det || {}); setNotes(det?.staff_notes || "");
+    setDoneIds((comp || []).map((c) => c.lesson_id));
+  }
+
+  async function saveField(table, patch) {
+    setSaved(""); setErr("");
+    const q = table === "profiles"
+      ? db.from("profiles").update(patch).eq("id", studentId)
+      : db.from("student_details").update(patch).eq("user_id", studentId);
+    const { error } = await q;
+    if (error) setErr(error.message);
+    else { setSaved("Enregistré."); await load(); await reload(); setTimeout(() => setSaved(""), 2500); }
+  }
+
+  if (!p || !d) return html`<p class="muted">Chargement de la fiche…</p>`;
+
+  const done = new Set(doneIds);
+  const xp = courses.flatMap((c) => c.lessons).filter((l) => done.has(l.id)).reduce((s,l)=>s+l.xp, 0);
+  const age = ageFrom(d.birthdate);
+  const minor = age !== null && age < 15;
+
+  return html`
+    <div>
+      <button class="plain" onClick=${onBack}>← Retour à la liste</button>
+
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--s3);flex-wrap:wrap;margin:var(--s3) 0 var(--s4)">
+        <div>
+          <h1 style="font-size:26px">${p.full_name}</h1>
+          <p class="muted">${ROLES[p.role]}${age !== null ? ` · ${age} ans` : ""} · inscrit ${dateFr(p.created_at)}</p>
+        </div>
+        <div style="display:flex;gap:var(--s2);align-items:center">
+          <span class=${"pill " + (p.status==="active"?"live":p.status==="pending"?"wait":"off")}>
+            ${p.status==="active"?"Compte actif":p.status==="pending"?"En attente":"Suspendu"}</span>
+          ${isAdmin && p.status === "active" && html`
+            <button class="ghost tiny" onClick=${() => saveField("profiles", { status:"suspended" })}>Suspendre</button>`}
+          ${isAdmin && p.status !== "active" && html`
+            <button class="ok tiny" onClick=${() => saveField("profiles", { status:"active" })}>Activer</button>`}
+        </div>
       </div>
 
-      ${rows.length > 0 && html`<p class="muted" style="margin-top:var(--s3)">
-        Un avancement en rouge signale un élève décroché — c'est le moment de lui écrire.</p>`}
-    </div>
-  `;
+      ${err && html`<p class="error" style="margin-bottom:var(--s3)">${err}</p>`}
+      ${saved && html`<p class="notice" style="margin-bottom:var(--s3)">${saved}</p>`}
+
+      <div class="split">
+        <div>
+          <div class="card">
+            <p class="eyebrow" style="margin-bottom:var(--s3)">Progression</p>
+            <div style="display:flex;align-items:baseline;gap:var(--s3);margin-bottom:var(--s3)">
+              <span style="font-family:var(--serif);font-size:28px">${xp}</span>
+              <span class="muted">XP · niveau ${levelOf(xp)} · ${doneIds.length} leçons validées</span></div>
+            ${courses.map((c) => {
+              const n = c.lessons.filter((l) => done.has(l.id)).length;
+              const pct = c.lessons.length ? Math.round((n/c.lessons.length)*100) : 0;
+              return html`<div key=${c.id} style="margin-bottom:var(--s3)">
+                <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:var(--s1)">
+                  <span>${c.title}</span><span class="muted">${n}/${c.lessons.length}</span></div>
+                <div class="track dark"><i style=${`width:${pct}%`}></i></div></div>`;
+            })}
+          </div>
+
+          <div class="card">
+            <p class="eyebrow" style="margin-bottom:var(--s3)">Notes de suivi</p>
+            <p class="muted" style="margin-bottom:var(--s2)">
+              Visibles par l'encadrement uniquement. L'élève n'y a jamais accès.</p>
+            <textarea value=${notes} onInput=${(e)=>setNotes(e.target.value)}
+              placeholder="Points forts, difficultés, décisions prises en rendez-vous…"></textarea>
+            <button class="ghost" style="margin-top:var(--s2)"
+              onClick=${() => saveField("student_details", { staff_notes: notes })}>Enregistrer les notes</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <p class="eyebrow" style="margin-bottom:var(--s3)">Coordonnées</p>
+            <dl class="dl">
+              <dt>Naissance</dt><dd>${dateFr(d.birthdate)}</dd>
+              <dt>Téléphone</dt><dd>${d.phone || "—"}</dd>
+              <dt>Discord</dt><dd>${d.discord || "—"}</dd>
+              <dt>Établissement</dt><dd>${d.school || "—"}</dd>
+            </dl>
+          </div>
+
+          ${minor && html`<div class="card">
+            <p class="eyebrow" style="margin-bottom:var(--s3)">Responsable légal</p>
+            <dl class="dl">
+              <dt>Nom</dt><dd>${d.parent_name || "—"}</dd>
+              <dt>E-mail</dt><dd style="word-break:break-all">${d.parent_email || "—"}</dd>
+              <dt>Accord reçu</dt><dd>${d.parent_consent_at ? dateFr(d.parent_consent_at) : "pas encore"}</dd>
+            </dl>
+            ${isAdmin && !d.parent_consent_at && html`<button class="ok tiny" style="margin-top:var(--s3)"
+              onClick=${() => saveField("student_details", { parent_consent_at: new Date().toISOString() })}>
+              Enregistrer l'accord parental</button>`}
+          </div>`}
+
+          <div class="card">
+            <p class="eyebrow" style="margin-bottom:var(--s3)">Adhésion</p>
+            <dl class="dl">
+              <dt>Adhérent depuis</dt><dd>${dateFr(d.member_since)}</dd>
+              <dt>Référence</dt><dd>${d.membership_ref || "—"}</dd>
+            </dl>
+            ${isAdmin && !d.member_since && html`<button class="ok tiny" style="margin-top:var(--s3)"
+              onClick=${() => saveField("student_details", { member_since: new Date().toISOString().slice(0,10) })}>
+              Enregistrer l'adhésion</button>`}
+          </div>
+
+          ${isAdmin && html`<div class="card">
+            <p class="eyebrow" style="margin-bottom:var(--s3)">Encadrant rattaché</p>
+            <select value=${p.tutor_id || ""} onChange=${(e) =>
+              saveField("profiles", { tutor_id: e.target.value || null })}>
+              <option value="">Aucun</option>
+              ${tutors.map((t) => html`<option key=${t.id} value=${t.id}>${t.full_name}</option>`)}
+            </select>
+          </div>`}
+        </div>
+      </div>
+    </div>`;
 }
 
 /* ==================================================================
-   10. BACK-OFFICE — GESTION DES COURS ET DES LEÇONS
+   10. VALIDATION DES INSCRIPTIONS (BUREAU)
    ================================================================== */
-const EMPTY_LESSON = { title: "", type: "video", content_url: "", body: "", duration_min: "", xp: 50 };
+function Validation({ onOpen, reload }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    setLoading(true);
+    const { data, error } = await db.from("pending_review")
+      .select("*").eq("status", "pending").order("created_at");
+    if (error) setErr(error.message); else setRows(data || []);
+    setLoading(false);
+  }
+
+  async function mark(id, patch, table) {
+    const q = table === "profiles"
+      ? db.from("profiles").update(patch).eq("id", id)
+      : db.from("student_details").update(patch).eq("user_id", id);
+    const { error } = await q;
+    if (error) setErr(error.message); else { await load(); await reload(); }
+  }
+
+  return html`
+    <div>
+      <h1 style="font-size:26px">Inscriptions à valider</h1>
+      <p class="muted" style="margin-bottom:var(--s4)">
+        Un compte n'ouvre l'accès aux cours qu'une fois validé ici.</p>
+      ${err && html`<p class="error" style="margin-bottom:var(--s3)">${err}</p>`}
+      ${loading && html`<p class="muted">Chargement…</p>`}
+      ${!loading && rows.length === 0 && html`
+        <div class="card"><p class="muted">Aucune inscription en attente.</p></div>`}
+
+      ${rows.map((r) => {
+        const blocked = r.consent_required && !r.parent_consent_at;
+        return html`<div class="card" key=${r.id}>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);flex-wrap:wrap">
+            <div>
+              <p style="font-size:16px">${r.full_name}</p>
+              <p class="muted">${r.age !== null ? `${r.age} ans` : "âge inconnu"} · demande du ${dateFr(r.created_at)}</p>
+            </div>
+            <button class="ghost tiny" onClick=${() => onOpen(r.id)}>Ouvrir la fiche</button>
+          </div>
+
+          <div class="row" style="margin-top:var(--s3)">
+            <div><p style="font-size:14px">Adhésion vérifiée</p>
+              <p class="muted">${r.member_since ? `Enregistrée le ${dateFr(r.member_since)}` : "Non enregistrée"}</p></div>
+            ${!r.member_since && html`<button class="ghost tiny"
+              onClick=${() => mark(r.id, { member_since: new Date().toISOString().slice(0,10) }, "details")}>
+              Marquer adhérent</button>`}
+          </div>
+
+          ${r.consent_required && html`<div class="row">
+            <div><p style="font-size:14px">Accord parental reçu</p>
+              <p class="muted">Obligatoire — moins de 15 ans. ${r.parent_email || ""}</p></div>
+            ${!r.parent_consent_at
+              ? html`<button class="ghost tiny"
+                  onClick=${() => mark(r.id, { parent_consent_at: new Date().toISOString() }, "details")}>
+                  Marquer reçu</button>`
+              : html`<span class="pill live">${dateFr(r.parent_consent_at)}</span>`}
+          </div>`}
+
+          <div style="margin-top:var(--s4);display:flex;gap:var(--s2);align-items:center;flex-wrap:wrap">
+            <button class="ok" disabled=${blocked}
+              onClick=${() => mark(r.id, { status: "active" }, "profiles")}>Ouvrir le compte</button>
+            <button class="ghost" onClick=${() => mark(r.id, { status: "suspended" }, "profiles")}>Refuser</button>
+            ${blocked && html`<span class="muted">
+              L'accord parental doit être enregistré avant l'ouverture du compte.</span>`}
+          </div>
+        </div>`;
+      })}
+    </div>`;
+}
+
+/* ==================================================================
+   11. BACK-OFFICE DES COURS
+   ================================================================== */
+const EMPTY_LESSON = { title:"", type:"video", content_url:"", body:"", duration_min:"", xp:50 };
 
 function Gestion({ courses, reload }) {
-  const [sel, setSel]       = useState(courses[0]?.id || null);
-  const [err, setErr]       = useState("");
+  const [sel, setSel] = useState(courses[0]?.id || null);
+  const [err, setErr] = useState("");
   const [newCourse, setNew] = useState(null);
-  const [draft, setDraft]   = useState(null);
-  const [editing, setEdit]  = useState(null);
-
+  const [draft, setDraft] = useState(null);
+  const [editing, setEdit] = useState(null);
   const course = courses.find((c) => c.id === sel) || null;
 
   async function run(promise, done) {
@@ -727,178 +932,157 @@ function Gestion({ courses, reload }) {
 
   async function saveCourse(e) {
     e.preventDefault();
-    const pos = courses.length ? Math.max(...courses.map((c) => c.position)) + 1 : 1;
+    const pos = courses.length ? Math.max(...courses.map((c)=>c.position)) + 1 : 1;
     await run(db.from("courses").insert({
-      title: newCourse.title.trim(), discipline: newCourse.discipline.trim() || null,
-      description: newCourse.description.trim() || null, published: false, position: pos,
+      title:newCourse.title.trim(), discipline:newCourse.discipline.trim() || null,
+      description:newCourse.description.trim() || null, published:false, position:pos,
     }), () => setNew(null));
   }
 
   async function saveLesson(e) {
     e.preventDefault();
-    const pos = course.lessons.length ? Math.max(...course.lessons.map((l) => l.position)) + 1 : 1;
+    const pos = course.lessons.length ? Math.max(...course.lessons.map((l)=>l.position)) + 1 : 1;
     const payload = {
-      course_id: course.id, title: draft.title.trim(), type: draft.type,
-      content_url: draft.content_url.trim() || null, body: draft.body.trim() || null,
-      duration_min: draft.duration_min ? Number(draft.duration_min) : null,
-      xp: Number(draft.xp) || 50,
+      course_id:course.id, title:draft.title.trim(), type:draft.type,
+      content_url:draft.content_url.trim() || null, body:draft.body.trim() || null,
+      duration_min:draft.duration_min ? Number(draft.duration_min) : null,
+      xp:Number(draft.xp) || 50,
     };
     if (editing) await run(db.from("lessons").update(payload).eq("id", editing), () => { setDraft(null); setEdit(null); });
-    else await run(db.from("lessons").insert({ ...payload, position: pos }), () => setDraft(null));
+    else await run(db.from("lessons").insert({ ...payload, position:pos }), () => setDraft(null));
   }
 
   async function move(lesson, dir) {
     const list = course.lessons;
-    const i = list.findIndex((l) => l.id === lesson.id);
-    const j = i + dir;
+    const i = list.findIndex((l) => l.id === lesson.id), j = i + dir;
     if (j < 0 || j >= list.length) return;
-    await db.from("lessons").update({ position: list[j].position }).eq("id", list[i].id);
-    await db.from("lessons").update({ position: list[i].position }).eq("id", list[j].id);
+    await db.from("lessons").update({ position:list[j].position }).eq("id", list[i].id);
+    await db.from("lessons").update({ position:list[i].position }).eq("id", list[j].id);
     await reload();
   }
 
   return html`
     <div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--s3);margin-bottom:var(--s4)">
-        <div>
-          <h1 style="font-size:26px">Gestion des cours</h1>
-          <p class="muted">Crée tes cours, ajoute des leçons, publie quand tu es prêt.</p>
-        </div>
-        <button onClick=${() => setNew(newCourse ? null : { title: "", discipline: "", description: "" })}>
-          ${newCourse ? "Annuler" : "Nouveau cours"}
-        </button>
+        <div><h1 style="font-size:26px">Gestion des cours</h1>
+          <p class="muted">Crée tes cours, ajoute des leçons, publie quand tu es prêt.</p></div>
+        <button onClick=${() => setNew(newCourse ? null : { title:"", discipline:"", description:"" })}>
+          ${newCourse ? "Annuler" : "Nouveau cours"}</button>
       </div>
       ${err && html`<p class="error" style="margin-bottom:var(--s3)">${err}</p>`}
 
-      ${newCourse && html`
-        <form class="card" onSubmit=${saveCourse} style="margin-bottom:var(--s4)">
-          <div class="field"><label>Titre</label>
-            <input value=${newCourse.title} onInput=${(e) => setNew({ ...newCourse, title: e.target.value })} /></div>
-          <div class="field"><label>Discipline</label>
-            <input value=${newCourse.discipline} placeholder="Questions contemporaines, Histoire…"
-                   onInput=${(e) => setNew({ ...newCourse, discipline: e.target.value })} /></div>
-          <div class="field"><label>Description</label>
-            <textarea value=${newCourse.description}
-                      onInput=${(e) => setNew({ ...newCourse, description: e.target.value })}></textarea></div>
-          <button disabled=${newCourse.title.trim().length < 3}>Créer le cours</button>
-        </form>`}
+      ${newCourse && html`<form class="card" onSubmit=${saveCourse} style="margin-bottom:var(--s4)">
+        <div class="field"><label>Titre</label>
+          <input value=${newCourse.title} onInput=${(e)=>setNew({...newCourse,title:e.target.value})} /></div>
+        <div class="field"><label>Discipline</label>
+          <input value=${newCourse.discipline} placeholder="Questions contemporaines, Histoire…"
+            onInput=${(e)=>setNew({...newCourse,discipline:e.target.value})} /></div>
+        <div class="field"><label>Description</label>
+          <textarea value=${newCourse.description}
+            onInput=${(e)=>setNew({...newCourse,description:e.target.value})}></textarea></div>
+        <button disabled=${newCourse.title.trim().length < 3}>Créer le cours</button></form>`}
 
       <div class="split3">
         <div class="card" style="padding:var(--s2);align-self:start">
           ${courses.length === 0 && html`<p class="muted" style="padding:var(--s2)">Aucun cours.</p>`}
-          ${courses.map((c) => html`
-            <button key=${c.id} class=${"rowbtn" + (c.id === sel ? " on" : "")}
-                    onClick=${() => { setSel(c.id); setDraft(null); setEdit(null); }}>
-              <span style="display:block;font-size:14px">${c.title}</span>
-              <span class=${"pill" + (c.published ? " live" : "")}>${c.published ? "Publié" : "Brouillon"}</span>
-            </button>`)}
+          ${courses.map((c) => html`<button key=${c.id} class=${"rowbtn" + (c.id===sel?" on":"")}
+            onClick=${() => { setSel(c.id); setDraft(null); setEdit(null); }}>
+            <span style="display:block;font-size:14px">${c.title}</span>
+            <span class=${"pill" + (c.published?" live":"")}>${c.published?"Publié":"Brouillon"}</span></button>`)}
         </div>
 
         ${!course ? html`<div class="card"><p class="muted">Sélectionne ou crée un cours.</p></div>` : html`
           <div>
             <div class="card">
               <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);flex-wrap:wrap">
-                <div>
-                  <p class="eyebrow">${course.discipline || "Sans discipline"}</p>
-                  <h2 style="font-size:22px;margin-top:var(--s1)">${course.title}</h2>
-                </div>
+                <div><p class="eyebrow">${course.discipline || "Sans discipline"}</p>
+                  <h2 style="font-size:22px;margin-top:var(--s1)">${course.title}</h2></div>
                 <div style="display:flex;gap:var(--s2);align-items:center">
-                  <button class="ghost" onClick=${() => run(db.from("courses").update({ published: !course.published }).eq("id", course.id))}>
-                    ${course.published ? "Dépublier" : "Publier"}
-                  </button>
-                  <button class="danger" onClick=${() => {
-                    if (confirm("Supprimer ce cours et toutes ses leçons ?"))
-                      run(db.from("courses").delete().eq("id", course.id), () => setSel(null));
-                  }}>Supprimer</button>
+                  <button class="ghost" onClick=${() => run(db.from("courses").update({published:!course.published}).eq("id",course.id))}>
+                    ${course.published ? "Dépublier" : "Publier"}</button>
+                  <button class="danger" onClick=${() => { if (confirm("Supprimer ce cours et toutes ses leçons ?"))
+                    run(db.from("courses").delete().eq("id",course.id), () => setSel(null)); }}>Supprimer</button>
                 </div>
               </div>
               ${course.description && html`<p class="muted" style="margin-top:var(--s3)">${course.description}</p>`}
-              ${!course.published && html`<p class="muted" style="margin-top:var(--s3)">
-                Ce cours est un brouillon : les élèves ne le voient pas encore.</p>`}
             </div>
 
             <div class="card">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s3);margin-bottom:var(--s3)">
                 <p class="eyebrow">${course.lessons.length} leçons</p>
-                <button class="ghost tiny" onClick=${() => { setDraft(draft ? null : { ...EMPTY_LESSON }); setEdit(null); }}>
-                  ${draft && !editing ? "Annuler" : "Ajouter une leçon"}
-                </button>
+                <button class="ghost tiny" onClick=${() => { setDraft(draft ? null : {...EMPTY_LESSON}); setEdit(null); }}>
+                  ${draft && !editing ? "Annuler" : "Ajouter une leçon"}</button>
               </div>
+              ${course.lessons.map((l, i) => html`<div class="row" key=${l.id}>
+                <div style="flex:1;min-width:0">
+                  <span style="font-size:14px">${i+1}. ${l.title}</span>
+                  <span class="muted" style="display:block">${TYPES[l.type]||l.type} · ${l.xp} XP${l.content_url?" · contenu lié":" · sans contenu"}</span>
+                </div>
+                <div style="display:flex;gap:var(--s2);align-items:center;flex-shrink:0">
+                  <button class="ghost tiny" disabled=${i===0} onClick=${() => move(l,-1)}>↑</button>
+                  <button class="ghost tiny" disabled=${i===course.lessons.length-1} onClick=${() => move(l,1)}>↓</button>
+                  <button class="ghost tiny" onClick=${() => { setEdit(l.id); setDraft({
+                    title:l.title, type:l.type, content_url:l.content_url||"", body:l.body||"",
+                    duration_min:l.duration_min||"", xp:l.xp }); }}>Modifier</button>
+                  <button class="danger" onClick=${() => { if (confirm("Supprimer cette leçon ?"))
+                    run(db.from("lessons").delete().eq("id",l.id)); }}>✕</button>
+                </div>
+              </div>`)}
 
-              ${course.lessons.map((l, i) => html`
-                <div class="row" key=${l.id}>
-                  <div style="flex:1;min-width:0">
-                    <span style="font-size:14px">${i + 1}. ${l.title}</span>
-                    <span class="muted" style="display:block">
-                      ${TYPES[l.type] || l.type} · ${l.xp} XP${l.content_url ? " · contenu lié" : " · sans contenu"}</span>
-                  </div>
-                  <div style="display:flex;gap:var(--s2);align-items:center;flex-shrink:0">
-                    <button class="ghost tiny" disabled=${i === 0} onClick=${() => move(l, -1)}>↑</button>
-                    <button class="ghost tiny" disabled=${i === course.lessons.length - 1} onClick=${() => move(l, 1)}>↓</button>
-                    <button class="ghost tiny" onClick=${() => {
-                      setEdit(l.id);
-                      setDraft({ title: l.title, type: l.type, content_url: l.content_url || "",
-                                 body: l.body || "", duration_min: l.duration_min || "", xp: l.xp });
-                    }}>Modifier</button>
-                    <button class="danger" onClick=${() => {
-                      if (confirm("Supprimer cette leçon ?")) run(db.from("lessons").delete().eq("id", l.id));
-                    }}>✕</button>
-                  </div>
-                </div>`)}
-
-              ${draft && html`
-                <form onSubmit=${saveLesson} style="border-top:1px solid var(--line);margin-top:var(--s3);padding-top:var(--s4)">
-                  <p class="eyebrow" style="margin-bottom:var(--s3)">${editing ? "Modifier la leçon" : "Nouvelle leçon"}</p>
-                  <div class="field"><label>Titre</label>
-                    <input value=${draft.title} onInput=${(e) => setDraft({ ...draft, title: e.target.value })} /></div>
-                  <div class="grid2">
-                    <div class="field"><label>Type</label>
-                      <select value=${draft.type} onChange=${(e) => setDraft({ ...draft, type: e.target.value })}>
-                        ${Object.entries(TYPES).map(([k, v]) => html`<option key=${k} value=${k}>${v}</option>`)}
-                      </select></div>
-                    <div class="field"><label>Durée (minutes)</label>
-                      <input type="number" value=${draft.duration_min}
-                             onInput=${(e) => setDraft({ ...draft, duration_min: e.target.value })} /></div>
-                  </div>
-                  <div class="field"><label>Lien du contenu — YouTube non répertorié, PDF, audio</label>
-                    <input value=${draft.content_url} placeholder="https://youtu.be/…"
-                           onInput=${(e) => setDraft({ ...draft, content_url: e.target.value })} /></div>
-                  <div class="field"><label>Texte de la leçon (facultatif)</label>
-                    <textarea value=${draft.body} onInput=${(e) => setDraft({ ...draft, body: e.target.value })}></textarea></div>
-                  <div class="field" style="max-width:160px"><label>XP accordés</label>
-                    <input type="number" value=${draft.xp} onInput=${(e) => setDraft({ ...draft, xp: e.target.value })} /></div>
-                  <div style="display:flex;gap:var(--s2)">
-                    <button disabled=${draft.title.trim().length < 3}>${editing ? "Enregistrer" : "Ajouter"}</button>
-                    <button type="button" class="ghost" onClick=${() => { setDraft(null); setEdit(null); }}>Annuler</button>
-                  </div>
-                </form>`}
+              ${draft && html`<form onSubmit=${saveLesson} style="border-top:1px solid var(--line);margin-top:var(--s3);padding-top:var(--s4)">
+                <p class="eyebrow" style="margin-bottom:var(--s3)">${editing ? "Modifier la leçon" : "Nouvelle leçon"}</p>
+                <div class="field"><label>Titre</label>
+                  <input value=${draft.title} onInput=${(e)=>setDraft({...draft,title:e.target.value})} /></div>
+                <div class="grid2">
+                  <div class="field"><label>Type</label>
+                    <select value=${draft.type} onChange=${(e)=>setDraft({...draft,type:e.target.value})}>
+                      ${Object.entries(TYPES).map(([k,v]) => html`<option key=${k} value=${k}>${v}</option>`)}
+                    </select></div>
+                  <div class="field"><label>Durée (minutes)</label>
+                    <input type="number" value=${draft.duration_min}
+                      onInput=${(e)=>setDraft({...draft,duration_min:e.target.value})} /></div>
+                </div>
+                <div class="field"><label>Lien du contenu — YouTube non répertorié, PDF, audio</label>
+                  <input value=${draft.content_url} placeholder="https://youtu.be/…"
+                    onInput=${(e)=>setDraft({...draft,content_url:e.target.value})} /></div>
+                <div class="field"><label>Texte de la leçon (facultatif)</label>
+                  <textarea value=${draft.body} onInput=${(e)=>setDraft({...draft,body:e.target.value})}></textarea></div>
+                <div class="field" style="max-width:160px"><label>XP accordés</label>
+                  <input type="number" value=${draft.xp} onInput=${(e)=>setDraft({...draft,xp:e.target.value})} /></div>
+                <div style="display:flex;gap:var(--s2)">
+                  <button disabled=${draft.title.trim().length < 3}>${editing ? "Enregistrer" : "Ajouter"}</button>
+                  <button type="button" class="ghost" onClick=${() => { setDraft(null); setEdit(null); }}>Annuler</button>
+                </div>
+              </form>`}
             </div>
           </div>`}
       </div>
-    </div>
-  `;
+    </div>`;
 }
 
 /* ==================================================================
-   11. APPLICATION
+   12. APPLICATION
    ================================================================== */
 function App() {
-  const [screen, setScreen]   = useState("vitrine");
+  const [screen, setScreen] = useState("vitrine");
   const [session, setSession] = useState(null);
-  const [me, setMe]           = useState(null);
+  const [me, setMe] = useState(null);
+  const [myDetails, setMyDetails] = useState(null);
   const [courses, setCourses] = useState([]);
-  const [done, setDone]       = useState(new Set());
-  const [rows, setRows]       = useState([]);
-  const [view, setView]       = useState({ page: "cours" });
+  const [done, setDone] = useState(new Set());
+  const [rows, setRows] = useState([]);
+  const [tutors, setTutors] = useState([]);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [view, setView] = useState({ page:"cours" });
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy]       = useState(false);
-  const [fail, setFail]       = useState("");
+  const [busy, setBusy] = useState(false);
+  const [fail, setFail] = useState("");
 
   useEffect(() => {
     db.auth.getSession().then(({ data }) => { setSession(data.session); setLoading(false); });
     const { data: sub } = db.auth.onAuthStateChange((_e, s) => {
       setSession(s);
-      if (!s) { setMe(null); setView({ page: "cours" }); setScreen("vitrine"); }
+      if (!s) { setMe(null); setView({ page:"cours" }); setScreen("vitrine"); }
     });
     return () => sub.subscription.unsubscribe();
   }, []);
@@ -910,35 +1094,49 @@ function App() {
     try {
       const uid = session.user.id;
 
-      const { data: prof, error: e1 } = await db
-        .from("profiles").select("id, full_name, role, tutor_id").eq("id", uid).single();
+      const { data: prof, error: e1 } = await db.from("profiles")
+        .select("id, full_name, role, status, tutor_id").eq("id", uid).single();
       if (e1) throw e1;
       setMe(prof);
+
+      const { data: mine } = await db.from("student_details").select("*").eq("user_id", uid).maybeSingle();
+      setMyDetails(mine || {});
+
+      if (prof.role === "eleve" && prof.status !== "active") { setLoading(false); return; }
 
       const { data: cs, error: e2 } = await db.from("courses")
         .select("id, title, discipline, description, published, position, lessons(id, title, type, xp, duration_min, position, content_url, body)");
       if (e2) throw e2;
-      setCourses((cs || []).sort((a, b) => a.position - b.position)
-        .map((c) => ({ ...c, lessons: (c.lessons || []).sort((a, b) => a.position - b.position) })));
+      setCourses((cs || []).sort((a,b) => a.position-b.position)
+        .map((c) => ({ ...c, lessons:(c.lessons||[]).sort((a,b) => a.position-b.position) })));
 
-      const { data: comp, error: e3 } = await db
-        .from("lesson_completions").select("lesson_id").eq("user_id", uid);
-      if (e3) throw e3;
+      const { data: comp } = await db.from("lesson_completions").select("lesson_id").eq("user_id", uid);
       setDone(new Set((comp || []).map((c) => c.lesson_id)));
 
-      if (prof.role === "admin") {
-        const { data: people } = await db.from("profiles")
-          .select("id, full_name, role").order("full_name");
+      if (prof.role !== "eleve") {
+        let q = db.from("profiles").select("id, full_name, role, status, tutor_id").order("full_name");
+        if (prof.role === "encadrant") q = q.eq("tutor_id", uid);
+        const { data: people } = await q;
+
         const { data: scores } = await db.from("user_xp").select("user_id, xp, lessons_done");
-        const { data: unread } = await db.from("messages")
-          .select("student_id, sender_id, read_at").is("read_at", null);
+        const { data: unread } = await db.from("messages").select("student_id, sender_id, read_at").is("read_at", null);
         const byId = Object.fromEntries((scores || []).map((s) => [s.user_id, s]));
-        setRows((people || []).filter((p) => p.id !== uid).map((p) => ({
+
+        setRows((people || []).filter((p) => p.id !== uid && p.role === "eleve").map((p) => ({
           ...p,
           xp: byId[p.id]?.xp ?? 0,
           lessons_done: byId[p.id]?.lessons_done ?? 0,
           unread: (unread || []).filter((m) => m.student_id === p.id && m.sender_id !== uid).length,
         })));
+
+        if (prof.role === "admin") {
+          const { data: staff } = await db.from("profiles")
+            .select("id, full_name").in("role", ["encadrant", "admin"]).order("full_name");
+          setTutors(staff || []);
+          const { count } = await db.from("profiles")
+            .select("id", { count:"exact", head:true }).eq("role","eleve").eq("status","pending");
+          setPendingCount(count || 0);
+        }
       }
     } catch (e) {
       setFail(e.message || "Impossible de charger les données.");
@@ -948,29 +1146,16 @@ function App() {
 
   async function toggle(lessonId, isDone) {
     setBusy(true);
-    const uid = session.user.id;
-    const next = new Set(done);
+    const uid = session.user.id, next = new Set(done);
     if (isDone) {
-      const { error } = await db.from("lesson_completions").delete()
-        .eq("user_id", uid).eq("lesson_id", lessonId);
+      const { error } = await db.from("lesson_completions").delete().eq("user_id",uid).eq("lesson_id",lessonId);
       if (!error) next.delete(lessonId);
     } else {
-      const { error } = await db.from("lesson_completions")
-        .insert({ user_id: uid, lesson_id: lessonId });
+      const { error } = await db.from("lesson_completions").insert({ user_id:uid, lesson_id:lessonId });
       if (!error) next.add(lessonId);
     }
     setDone(next); setBusy(false);
   }
-
-  async function setRole(id, role) {
-    await db.from("profiles").update({ role }).eq("id", id);
-    await load();
-  }
-
-  const visible = me?.role === "admin" ? courses : courses.filter((c) => c.published);
-  const xp = visible.flatMap((c) => c.lessons).filter((l) => done.has(l.id)).reduce((s, l) => s + l.xp, 0);
-  const totalLessons = visible.reduce((n, c) => n + c.lessons.length, 0);
-  const students = rows.filter((r) => r.role === "eleve");
 
   if (loading && !session) return html`<div class="center-page"><p class="muted">Chargement…</p></div>`;
   if (!session) return screen === "connexion"
@@ -978,46 +1163,64 @@ function App() {
     : html`<${Vitrine} onEnter=${() => setScreen("connexion")} />`;
   if (!me) return html`<div class="center-page"><p class="muted">Chargement…</p></div>`;
 
-  const unreadTotal = rows.reduce((n, r) => n + (r.unread || 0), 0);
+  if (me.role === "eleve" && me.status !== "active")
+    return html`<${EnAttente} me=${me} details=${myDetails} />`;
+
+  const staff = me.role !== "eleve";
+  const visible = staff ? courses : courses.filter((c) => c.published);
+  const xp = visible.flatMap((c)=>c.lessons).filter((l)=>done.has(l.id)).reduce((s,l)=>s+l.xp, 0);
+  const totalLessons = visible.reduce((n,c) => n + c.lessons.length, 0);
+  const unreadTotal = rows.reduce((n,r) => n + (r.unread||0), 0);
+
   const tabs = me.role === "admin"
-    ? [["cours", "Cours"], ["gestion", "Gestion"], ["eleves", "Élèves"],
-       ["forum", "Forum"], ["messages", unreadTotal ? `Messages (${unreadTotal})` : "Messages"]]
-    : [["cours", "Mes cours"], ["forum", "Forum"], ["messages", "Mon tuteur"]];
+    ? [["cours","Cours"], ["gestion","Gestion"], ["eleves","Élèves"],
+       ["validation", pendingCount ? `Validation (${pendingCount})` : "Validation"],
+       ["forum","Forum"], ["messages", unreadTotal ? `Messages (${unreadTotal})` : "Messages"]]
+    : me.role === "encadrant"
+      ? [["cours","Cours"], ["eleves","Mes élèves"], ["forum","Forum"],
+         ["messages", unreadTotal ? `Messages (${unreadTotal})` : "Messages"]]
+      : [["cours","Mes cours"], ["forum","Forum"], ["messages","Mon encadrant"]];
 
   return html`
     <div>
-      <div class="topbar">
-        <div class="wrap">
-          <div style="display:flex;align-items:center;gap:var(--s5);flex-wrap:wrap">
-            <span class="brand">Sciences pour tous</span>
-            <div class="navlinks">
-              ${tabs.map(([k, label]) => html`
-                <button key=${k} class=${view.page === k ? "on" : ""}
-                        onClick=${() => setView({ page: k })}>${label}</button>`)}
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:var(--s3)">
-            <span style="font-size:13px;color:var(--gray-soft)">${me.full_name}</span>
-            <button class="plain" style="color:var(--gray-soft)" onClick=${() => db.auth.signOut()}>Déconnexion</button>
+      <div class="topbar"><div class="wrap">
+        <div style="display:flex;align-items:center;gap:var(--s5);flex-wrap:wrap">
+          <span class="brand">${ASSO.nom}</span>
+          <div class="navlinks">
+            ${tabs.map(([k,label]) => html`<button key=${k} class=${view.page===k?"on":""}
+              onClick=${() => setView({ page:k })}>${label}</button>`)}
           </div>
         </div>
-      </div>
+        <div style="display:flex;align-items:center;gap:var(--s3)">
+          <span style="font-size:13px;color:var(--gray-soft)">${me.full_name}</span>
+          <button class="plain" style="color:var(--gray-soft)" onClick=${() => db.auth.signOut()}>Déconnexion</button>
+        </div>
+      </div></div>
 
       <div class="wrap" style="padding-top:var(--s5);padding-bottom:var(--s6)">
         ${fail && html`<p class="error" style="margin-bottom:var(--s4)">${fail}</p>`}
 
-        ${view.page === "gestion"  ? html`<${Gestion} courses=${courses} reload=${load} />`
-        : view.page === "eleves"   ? html`<${Eleves} rows=${rows} totalLessons=${totalLessons} onSetRole=${setRole} />`
-        : view.page === "forum"    ? html`<${Forum} me=${me} />`
-        : view.page === "messages" ? html`<${Messagerie} me=${me} students=${students} />`
-        : view.id                  ? html`<${Cours} course=${visible.find((c) => c.id === view.id)} done=${done}
-                                            busy=${busy} onToggle=${toggle}
-                                            onBack=${() => setView({ page: "cours" })} />`
+        ${view.page === "gestion" ? html`<${Gestion} courses=${courses} reload=${load} />`
+        : view.page === "validation" ? html`<${Validation} reload=${load}
+            onOpen=${(id) => setView({ page:"eleves", student:id })} />`
+        : view.page === "eleves"
+          ? (view.student
+              ? html`<${Fiche} me=${me} studentId=${view.student} courses=${courses} tutors=${tutors}
+                       reload=${load} onBack=${() => setView({ page:"eleves" })} />`
+              : html`<${Eleves} me=${me} rows=${rows} totalLessons=${totalLessons}
+                       onOpen=${(id) => setView({ page:"eleves", student:id })}
+                       title=${me.role === "admin" ? "Tous les élèves" : "Mes élèves"}
+                       subtitle=${me.role === "admin"
+                         ? `${rows.length} comptes élèves`
+                         : `${rows.length} élèves te sont rattachés`} />`)
+        : view.page === "forum" ? html`<${Forum} me=${me} />`
+        : view.page === "messages" ? html`<${Messagerie} me=${me} students=${rows} />`
+        : view.id ? html`<${Cours} course=${visible.find((c)=>c.id===view.id)} done=${done} busy=${busy}
+            readOnly=${staff} onToggle=${toggle} onBack=${() => setView({ page:"cours" })} />`
         : html`<${MesCours} me=${me} courses=${visible} done=${done} xp=${xp}
-                            onOpen=${(id) => setView({ page: "cours", id })} />`}
+            onOpen=${(id) => setView({ page:"cours", id })} />`}
       </div>
-    </div>
-  `;
+    </div>`;
 }
 
 render(html`<${App} />`, document.getElementById("root"));
