@@ -157,6 +157,9 @@ tr:last-child td{border-bottom:none}
 .chip.hot{border-color:#FECACA;background:#FEF2F2;color:#991B1B}
 .chip.ok{border-color:#A7F3D0;background:#ECFDF5;color:#065F46}
 .chip.fire{border-color:#FDE68A;background:#FFFBEB;color:#78350F}
+.dotmark{flex:0 0 auto;width:8px;height:8px;border-radius:50%;margin-top:7px;background:var(--gray-soft)}
+.dotmark.hot{background:var(--alert)}
+.dotmark.warn{background:var(--xp-bright)}
 /* --- Graphiques --- */
 .bars{display:flex;align-items:flex-end;gap:3px;height:90px}
 .bars > div{flex:1;background:var(--ink);border-radius:2px 2px 0 0;min-height:2px;position:relative}
@@ -1862,13 +1865,34 @@ function Profil({ me, reload }) {
    ================================================================== */
 function Equipe({ tags, onSetRole }) {
   const [rows, setRows] = useState([]);
+  const [grades, setGrades] = useState([]);
   const [err, setErr] = useState("");
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadGrades(); }, []);
+
+  async function loadGrades() {
+    const { data } = await db.from("staff_grades").select("*").order("level");
+    setGrades(data || []);
+  }
 
   async function load() {
     const { data, error } = await db.from("staff_overview").select("*").order("full_name");
     if (error) setErr(error.message); else setRows(data || []);
+  }
+
+  // Une promotion manuelle sans motif ne veut rien dire : on le demande.
+  async function promote(r, value) {
+    const level = value === "" ? null : Number(value);
+    let note = r.grade_note || null;
+    if (level !== null) {
+      note = prompt(`Pourquoi promouvoir ${r.full_name} ? Ce motif lui sera visible.`,
+                    r.grade_note || "");
+      if (note === null) return;
+      note = note.trim() || null;
+    } else { note = null; }
+    const { error } = await db.from("profiles")
+      .update({ grade_override: level, grade_note: note }).eq("id", r.id);
+    if (error) setErr(error.message); else await load();
   }
 
   const label = (code) => tags.find((t) => t.code === code)?.label || code;
@@ -1885,25 +1909,38 @@ function Equipe({ tags, onSetRole }) {
         <div style="display:flex;gap:var(--s4);align-items:flex-start;flex-wrap:wrap">
           <${Avatar} name=${r.full_name} path=${r.avatar_path} size=${56} />
           <div style="flex:1;min-width:220px">
-            <p style="font-size:17px">${r.full_name}<${Role} role=${r.role} /></p>
+            <p style="font-size:17px">${r.full_name}<${Role} role=${r.role} />
+              ${r.grade_name && html`<span class="grade">${r.grade_name}</span>`}</p>
             <p class="muted">${r.students} élève${r.students > 1 ? "s" : ""} rattaché${r.students > 1 ? "s" : ""}
-              ${r.correct_anonymously ? " · corrige sous anonymat" : ""}</p>
+              ${r.correct_anonymously ? " · corrige sous anonymat" : ""}
+              ${r.show_publicly ? " · visible sur le site public" : ""}</p>
             ${(r.subjects || []).length > 0 && html`<div class="tags" style="margin-top:var(--s2)">
               ${r.subjects.map((s) => html`<span key=${s} class="tag">${label(s)}</span>`)}
             </div>`}
           </div>
-          <div style="text-align:right;min-width:150px">
+          <div style="text-align:right;min-width:190px">
             <p style="font-family:var(--serif);font-size:24px">
               ${r.hours_this_month || 0}<span class="muted" style="font-size:13px"> h/sem.</span></p>
             <p class="muted" style="font-size:12px">
               ${r.availability_updated ? `déclaré le ${dateFr(r.availability_updated)}` : "aucun engagement déclaré"}</p>
             ${r.availability_note && html`<p class="muted" style="font-size:12px;font-style:italic">${r.availability_note}</p>`}
-            <select value=${r.role} style="margin-top:var(--s2)"
+
+            <label style="margin-top:var(--s3)">Rôle</label>
+            <select value=${r.role}
               onChange=${async (e) => { await onSetRole(r.id, e.target.value); await load(); }}>
               <option value="eleve">Élève</option>
               <option value="encadrant">Encadrant</option>
               <option value="admin">Bureau</option>
             </select>
+
+            <label style="margin-top:var(--s2)">Grade</label>
+            <select value=${r.grade_override ?? ""} onChange=${(e) => promote(r, e.target.value)}>
+              <option value="">Automatique — ${grades.find((g) => g.level === r.auto_level)?.name || "niveau " + r.auto_level}</option>
+              ${grades.map((g) => html`<option key=${g.level} value=${g.level}>${g.level}. ${g.name}</option>`)}
+            </select>
+            <p class="muted" style="font-size:12px;margin-top:var(--s1)">
+              ${r.points} pts${r.grade_override ? " · fixé par le bureau" : ""}</p>
+            ${r.grade_note && html`<p class="muted" style="font-size:12px;font-style:italic">« ${r.grade_note} »</p>`}
           </div>
         </div>
       </div>`)}
@@ -2177,12 +2214,74 @@ function Stat({ value, label, warn }) {
     <b>${value}</b><span>${label}</span></div>`;
 }
 
-function BordEncadrant({ me, rows, onOpen, onReport }) {
+/* --- Fenêtre de déclaration d'engagement ------------------------- */
+function Engagement({ me, month, onClose, onSaved }) {
+  const [m, setM] = useState(month || monthStart(1));
+  const [av, setAv] = useState({ hours_per_week: "", note: "" });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  useEffect(() => { load(m); }, [m]);
+
+  async function load(mm) {
+    const { data } = await db.from("staff_availability")
+      .select("hours_per_week, note").eq("user_id", me.id).eq("month", mm).maybeSingle();
+    setAv({ hours_per_week: data?.hours_per_week ?? "", note: data?.note || "" });
+  }
+
+  async function save() {
+    setBusy(true); setErr("");
+    const { error } = await db.from("staff_availability").upsert({
+      user_id: me.id, month: m,
+      hours_per_week: Number(av.hours_per_week) || 0,
+      note: av.note?.trim() || null, updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id,month" });
+    if (error) { setErr(error.message); setBusy(false); return; }
+    setBusy(false); onSaved(); onClose();
+  }
+
+  return html`<div class="veil" onClick=${(e) => e.target === e.currentTarget && onClose()}>
+    <div class="modal">
+      <h2 style="font-size:22px;margin-bottom:var(--s2)">Ton engagement</h2>
+      <p class="muted" style="margin-bottom:var(--s4)">
+        Combien de temps peux-tu donner par semaine ? Le bureau répartit les élèves
+        d'après ce que tu déclares — mieux vaut annoncer deux heures et les tenir
+        que sept et décrocher.</p>
+
+      <div class="field"><label>Mois concerné</label>
+        <select value=${m} onChange=${(e) => setM(e.target.value)}>
+          ${[0,1,2].map((o) => html`<option key=${o} value=${monthStart(o)}>${monthLabel(monthStart(o))}</option>`)}
+        </select></div>
+
+      <div style="display:flex;justify-content:center;margin:var(--s3) 0">
+        <${Jauge} value=${av.hours_per_week || 0} max=${7} size=${200} />
+      </div>
+
+      <div class="field"><label>Heures par semaine — objectif 7</label>
+        <input type="range" min="0" max="7" step="0.5" value=${av.hours_per_week || 0}
+          onInput=${(e) => setAv({ ...av, hours_per_week: e.target.value })} /></div>
+
+      <div class="field"><label>Indisponibilités, remarques</label>
+        <textarea value=${av.note} onInput=${(e) => setAv({ ...av, note: e.target.value })}
+          placeholder="Plutôt le week-end · absent la semaine du 12 · je peux prendre un élève de plus…"></textarea></div>
+
+      ${err && html`<p class="error" style="margin-bottom:var(--s3)">${err}</p>`}
+      <div style="display:flex;gap:var(--s2)">
+        <button disabled=${busy} onClick=${save}>Enregistrer</button>
+        <button class="ghost" onClick=${onClose}>Annuler</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function BordEncadrant({ me, rows, onOpen, onReport, onProfil }) {
   const [s, setS] = useState(null);
   const [follow, setFollow] = useState([]);
   const [rdv, setRdv] = useState([]);
   const [serie, setSerie] = useState([]);
   const [grade, setGrade] = useState(null);
+  const [avail, setAvail] = useState({});
+  const [modal, setModal] = useState(null);
 
   useEffect(() => { load(); }, []);
 
@@ -2198,14 +2297,20 @@ function BordEncadrant({ me, rows, onOpen, onReport }) {
     setSerie(sr || []);
     const { data: g } = await db.rpc("my_grade");
     setGrade(Array.isArray(g) ? g[0] : g);
+    const { data: a } = await db.from("staff_availability")
+      .select("month, hours_per_week, note").eq("user_id", me.id)
+      .in("month", [monthStart(0), monthStart(1)]);
+    setAvail(Object.fromEntries((a || []).map((x) => [x.month, x])));
   }
 
   if (!s) return html`<p class="muted">Chargement du tableau de bord…</p>`;
 
   const days = (d) => d ? Math.floor((Date.now() - new Date(d)) / 86400000) : null;
   const byId = Object.fromEntries(follow.map((f) => [f.student_id, f]));
+  const moisCourant = monthStart(0), moisSuivant = monthStart(1);
+  const decCourant = avail[moisCourant], decSuivant = avail[moisSuivant];
+  const secondeQuinzaine = new Date().getDate() >= 15;
 
-  // Une carte par élève : peu d'élèves, donc autant tout montrer d'un coup.
   const eleves = rows.map((r) => {
     const f = byId[r.id] || {};
     const seen = days(f.last_seen), met = days(f.last_meeting);
@@ -2218,6 +2323,29 @@ function BordEncadrant({ me, rows, onOpen, onReport }) {
     return { ...r, f, alerts, urgent: alerts.some((a) => a.t === "hot") };
   }).sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0));
 
+  // Tous les rappels au même endroit, du plus urgent au plus anodin.
+  const rappels = [];
+  if (!decCourant) rappels.push({
+    t: "hot", titre: `Ton engagement pour ${monthLabel(moisCourant)} n'est pas déclaré`,
+    detail: "Le bureau ne sait pas sur combien d'heures compter cette semaine.",
+    action: "Déclarer", run: () => setModal(moisCourant) });
+  else if (secondeQuinzaine && !decSuivant) rappels.push({
+    t: "warn", titre: `Déclare ton engagement pour ${monthLabel(moisSuivant)}`,
+    detail: "Nous sommes en seconde quinzaine : le bureau prépare la répartition du mois prochain.",
+    action: "Déclarer", run: () => setModal(moisSuivant) });
+
+  if (s.to_correct > 0) rappels.push({
+    t: "warn", titre: `${s.to_correct} copie${s.to_correct > 1 ? "s" : ""} libre${s.to_correct > 1 ? "s" : ""} à corriger`,
+    detail: "Personne ne les a encore prises en charge.", action: null });
+  if (s.unread > 0) rappels.push({
+    t: "warn", titre: `${s.unread} message${s.unread > 1 ? "s" : ""} sans réponse`,
+    detail: "Un élève qui écrit et n'obtient rien écrit rarement deux fois.", action: null });
+
+  eleves.filter((e) => e.urgent).forEach((e) => rappels.push({
+    t: "hot", titre: `${e.full_name} décroche`,
+    detail: e.alerts.filter((a) => a.t === "hot").map((a) => a.l).join(" · "),
+    action: "Ouvrir la fiche", run: () => onOpen(e.id) }));
+
   return html`
     <div>
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);flex-wrap:wrap;margin-bottom:var(--s4)">
@@ -2228,11 +2356,47 @@ function BordEncadrant({ me, rows, onOpen, onReport }) {
         <button class="ghost" onClick=${onReport}>Un souci, une idée ?</button>
       </div>
 
-      <div class="stats" style="margin-bottom:var(--s5)">
-        <${Stat} value=${s.my_students} label="élèves suivis" />
-        <${Stat} value=${s.to_correct} label="copies libres" warn=${s.to_correct > 0} />
-        <${Stat} value=${s.claimed_by_me} label="copies prises" warn=${s.claimed_by_me > 0} />
-        <${Stat} value=${s.unread} label="messages non lus" warn=${s.unread > 0} />
+      <div class="card" style="margin-bottom:var(--s5)">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s3);flex-wrap:wrap;margin-bottom:var(--s3)">
+          <p class="eyebrow">Rappels</p>
+          ${rappels.length > 0 && html`<span class="pill wait">${rappels.length}</span>`}
+        </div>
+        ${rappels.length === 0
+          ? html`<p class="muted">Rien à signaler. Tes élèves sont vus, tes copies rendues,
+              et ton engagement est déclaré. Belle semaine.</p>`
+          : rappels.map((r, i) => html`<div class="row" key=${i}>
+              <div style="min-width:0;display:flex;gap:var(--s3);align-items:flex-start">
+                <span class=${"dotmark " + r.t}></span>
+                <div style="min-width:0">
+                  <span style="font-size:14px">${r.titre}</span>
+                  <span class="muted" style="display:block">${r.detail}</span>
+                </div>
+              </div>
+              ${r.action && html`<button class="ghost tiny" onClick=${r.run}>${r.action}</button>`}
+            </div>`)}
+      </div>
+
+      <div class="split" style="margin-bottom:var(--s5)">
+        <div class="stats">
+          <${Stat} value=${s.my_students} label="élèves suivis" />
+          <${Stat} value=${s.to_correct} label="copies libres" warn=${s.to_correct > 0} />
+          <${Stat} value=${s.claimed_by_me} label="copies prises" warn=${s.claimed_by_me > 0} />
+          <${Stat} value=${s.unread} label="messages non lus" warn=${s.unread > 0} />
+        </div>
+        <div class="card" style="text-align:center">
+          <p class="eyebrow" style="margin-bottom:var(--s2)">Engagement ${monthLabel(moisCourant)}</p>
+          <${Jauge} value=${decCourant?.hours_per_week || 0} max=${7} size=${170} />
+          ${decCourant
+            ? html`<p class="muted" style="margin-top:var(--s2)">
+                Déclaré le ${dateFr(decCourant.updated_at || new Date())}.
+                ${decSuivant ? ` ${monthLabel(moisSuivant)} l'est aussi.` : ""}
+                <br/>Modifiable depuis <button class="plain" style="text-decoration:underline"
+                  onClick=${onProfil}>ton profil</button>.</p>`
+            : html`<button class="tiny" style="margin-top:var(--s2)"
+                onClick=${() => setModal(moisCourant)}>Déclarer maintenant</button>`}
+          ${decCourant?.note && html`<p class="muted" style="margin-top:var(--s2);font-style:italic">
+            « ${decCourant.note} »</p>`}
+        </div>
       </div>
 
       ${grade && html`<div class="card" style="margin-bottom:var(--s5)">
@@ -2240,12 +2404,15 @@ function BordEncadrant({ me, rows, onOpen, onReport }) {
           <div>
             <p class="eyebrow">Ton grade</p>
             <p style="font-family:var(--serif);font-size:22px;margin-top:var(--s1)">
-              ${grade.name} <span class="muted" style="font-size:13px">niveau ${grade.level} sur 7</span></p>
+              ${grade.name} <span class="muted" style="font-size:13px">niveau ${grade.level} sur 7</span>
+              ${grade.manual && html` <span class="pill live">distinction du bureau</span>`}</p>
             <p class="muted">${grade.description}</p>
+            ${grade.manual && grade.note && html`<p class="muted" style="margin-top:var(--s2);font-style:italic">
+              « ${grade.note} »</p>`}
           </div>
           <p style="font-family:var(--serif);font-size:26px">${grade.points}<span class="muted" style="font-size:13px"> pts</span></p>
         </div>
-        ${grade.next_name && html`
+        ${grade.next_name && !grade.manual && html`
           <div class="track dark" style="margin-top:var(--s3)">
             <i style=${`width:${Math.min(100, Math.round((grade.points / grade.next_points) * 100))}%`}></i></div>
           <p class="muted" style="margin-top:var(--s2)">
@@ -2282,118 +2449,15 @@ function BordEncadrant({ me, rows, onOpen, onReport }) {
           ${rdv.length === 0 && html`<p class="muted">Aucun rendez-vous confirmé.</p>`}
           ${rdv.slice(0, 4).map((m) => html`<div class="row" key=${m.id}>
             <div style="min-width:0"><span style="font-size:14px">${m.student_name}</span>
-              <span class="muted" style="display:block">
-                ${slotLabel(m.when_at, m.chosen_minutes)}</span></div>
+              <span class="muted" style="display:block">${slotLabel(m.when_at, m.chosen_minutes)}</span></div>
           </div>`)}
         </div>
       </div>
 
       <div style="margin-top:var(--s3)"><${MesSignalements} me=${me} /></div>
-    </div>`;
-}
 
-/* --- Onglet Rappel : alertes de suivi et engagement du mois ------- */
-function Rappel({ me, rows, onOpen }) {
-  const [follow, setFollow] = useState([]);
-  const [month, setMonth] = useState(monthStart(1));
-  const [av, setAv] = useState({ hours_per_week:"", note:"" });
-  const [saved, setSaved] = useState(false);
-  const [msg, setMsg] = useState("");
-
-  useEffect(() => { load(); }, []);
-  useEffect(() => { loadAv(month); }, [month]);
-
-  async function load() {
-    const { data } = await db.from("follow_up").select("*").eq("tutor_id", me.id);
-    setFollow(data || []);
-  }
-
-  async function loadAv(m) {
-    const { data } = await db.from("staff_availability")
-      .select("hours_per_week, note").eq("user_id", me.id).eq("month", m).maybeSingle();
-    setAv({ hours_per_week: data?.hours_per_week ?? "", note: data?.note || "" });
-    setSaved(!!data);
-  }
-
-  async function save() {
-    const { error } = await db.from("staff_availability").upsert({
-      user_id: me.id, month,
-      hours_per_week: Number(av.hours_per_week) || 0,
-      note: av.note?.trim() || null, updated_at: new Date().toISOString(),
-    }, { onConflict: "user_id,month" });
-    if (!error) { setMsg(`Engagement enregistré pour ${monthLabel(month)}.`); setSaved(true); }
-  }
-
-  const days = (d) => d ? Math.floor((Date.now() - new Date(d)) / 86400000) : null;
-  const byId = Object.fromEntries(follow.map((f) => [f.student_id, f]));
-
-  const alertes = rows.map((r) => {
-    const f = byId[r.id] || {};
-    const seen = days(f.last_seen), met = days(f.last_meeting);
-    const raisons = [];
-    if (seen === null) raisons.push("ne s'est jamais connecté");
-    else if (seen > 14) raisons.push(`absent depuis ${seen} jours`);
-    if (met === null) raisons.push("aucun point tenu à ce jour");
-    else if (met > 30) raisons.push(`dernier point il y a ${met} jours`);
-    if (r.unread > 0) raisons.push(`${r.unread} message${r.unread > 1 ? "s" : ""} sans réponse`);
-    return { ...r, raisons, next: f.next_meeting };
-  }).filter((x) => x.raisons.length > 0);
-
-  const jour = new Date().getDate();
-  const periode = jour >= 15;
-
-  return html`
-    <div>
-      <h1 style="font-size:26px">Rappels</h1>
-      <p class="muted" style="margin-bottom:var(--s4)">
-        Ce qui demande ton attention, et ton engagement pour le mois qui vient.</p>
-
-      ${alertes.length === 0
-        ? html`<div class="card"><p class="muted">
-            Aucune alerte. Tous tes élèves sont vus, suivis et à jour.</p></div>`
-        : html`<div class="card">
-            <p class="eyebrow" style="margin-bottom:var(--s3)">
-              ${alertes.length} élève${alertes.length > 1 ? "s" : ""} à relancer</p>
-            ${alertes.map((a) => html`<div class="row" key=${a.id}>
-              <div style="min-width:0">
-                <span style="font-size:14px">${a.full_name}</span>
-                <span class="muted" style="display:block">${a.raisons.join(" · ")}</span>
-              </div>
-              <button class="ghost tiny" onClick=${() => onOpen(a.id)}>Ouvrir la fiche</button>
-            </div>`)}
-          </div>`}
-
-      <div class="card">
-        <p class="eyebrow" style="margin-bottom:var(--s2)">Mon engagement</p>
-        ${periode && !saved && html`<p class="warn" style="margin-bottom:var(--s3)">
-          Nous sommes en seconde quinzaine : c'est le moment de déclarer ta disponibilité
-          pour ${monthLabel(monthStart(1))}. Le bureau en a besoin pour répartir les élèves.</p>`}
-
-        <div class="split">
-          <div>
-            <div class="field"><label>Mois concerné</label>
-              <select value=${month} onChange=${(e) => { setMonth(e.target.value); setMsg(""); }}>
-                ${[0,1,2].map((o) => html`<option key=${o} value=${monthStart(o)}>${monthLabel(monthStart(o))}</option>`)}
-              </select></div>
-            <div class="field"><label>Heures par semaine — objectif 7</label>
-              <input type="range" min="0" max="7" step="0.5" value=${av.hours_per_week || 0}
-                onInput=${(e) => setAv({ ...av, hours_per_week:e.target.value })} /></div>
-            <div class="field"><label>Indisponibilités, remarques</label>
-              <textarea value=${av.note} onInput=${(e) => setAv({ ...av, note:e.target.value })}
-                placeholder="Plutôt le week-end · absent la semaine du 12 · je peux prendre un élève de plus…"></textarea></div>
-            <button onClick=${save}>Enregistrer mon engagement</button>
-            ${msg && html`<p class="notice">${msg}</p>`}
-          </div>
-          <div style="display:flex;align-items:center;justify-content:center">
-            <${Jauge} value=${av.hours_per_week || 0} max=${7} />
-          </div>
-        </div>
-
-        <p class="muted" style="margin-top:var(--s3)">
-          Sept heures par semaine, c'est l'engagement d'un encadrant pleinement disponible.
-          Mieux vaut annoncer deux heures et les tenir que sept et décrocher — le bureau
-          répartit les élèves d'après ce que tu déclares.</p>
-      </div>
+      ${modal && html`<${Engagement} me=${me} month=${modal}
+        onClose=${() => setModal(null)} onSaved=${load} />`}
     </div>`;
 }
 
@@ -3470,7 +3534,7 @@ function App() {
        ["validation", pendingCount ? `Validation (${pendingCount})` : "Validation"],
        ["forum","Forum"], ["messages", unreadTotal ? `Messages (${unreadTotal})` : "Messages"]]
     : shown === "encadrant"
-      ? [["bord","Tableau de bord"], ["rappel","Rappels"], ["cours","Cours"], ["devoirs","Devoirs"],
+      ? [["bord","Tableau de bord"], ["cours","Cours"], ["devoirs","Devoirs"],
          ["eleves","Mes élèves"], ["forum","Forum"],
          ["messages", unreadTotal ? `Messages (${unreadTotal})` : "Messages"]]
       : [["cours","Mes cours"], ["devoirs","Devoirs"], ["badges","Badges"],
@@ -3514,11 +3578,10 @@ function App() {
               ? html`<${BordAdmin} me=${me} onGo=${(p) => setView({ page:p })}
                        onReport=${() => setReport(true)} />`
               : html`<${BordEncadrant} me=${me} rows=${rows} onReport=${() => setReport(true)}
+                       onProfil=${() => setView({ page:"profil" })}
                        onOpen=${(id) => setView({ page:"eleves", student:id })} />`)
         : view.page === "vitrine" ? html`<${ContenuVitrine} />`
         : view.page === "compte" ? html`<${MonCompte} me=${me} reload=${load} />`
-        : view.page === "rappel" ? html`<${Rappel} me=${me} rows=${rows}
-            onOpen=${(id) => setView({ page:"eleves", student:id })} />`
         : view.page === "profil" ? html`<${Profil} me=${me} reload=${load} />`
         : view.page === "equipe" ? html`<${Equipe} tags=${tags} onSetRole=${setRole} />`
         : view.page === "gestion" ? html`<${Gestion} courses=${courses} reload=${load} />`
