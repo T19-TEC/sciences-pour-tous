@@ -103,6 +103,21 @@ tr:last-child td{border-bottom:none}
 .bname{font-size:14px;margin-bottom:var(--s1)}
 .flame{display:inline-flex;align-items:baseline;gap:var(--s2);padding:var(--s2) var(--s3);
   border-radius:var(--radius);background:#FFFBEB;border:1px solid #FDE68A;color:#78350F;font-size:13px}
+.avatar{border-radius:50%;object-fit:cover;background:var(--paper);flex:0 0 auto;
+  border:1px solid var(--line);display:block}
+.avatar-fb{border-radius:50%;background:var(--ink);color:var(--white);flex:0 0 auto;
+  display:flex;align-items:center;justify-content:center;font-family:var(--serif)}
+.tag{display:inline-block;font-size:12px;padding:3px var(--s3);border-radius:999px;
+  border:1px solid var(--line);background:var(--white);color:var(--gray);cursor:pointer}
+.tag.on{background:var(--ink);color:var(--white);border-color:var(--ink)}
+.tags{display:flex;flex-wrap:wrap;gap:var(--s2)}
+.role{display:inline-block;font-size:11px;padding:1px var(--s2);border-radius:999px;
+  border:1px solid var(--line);color:var(--gray);background:var(--paper);margin-left:var(--s2)}
+.role.enc{border-color:#A7F3D0;background:#ECFDF5;color:#065F46}
+.role.adm{border-color:#FDE68A;background:#FFFBEB;color:#78350F}
+.viewas{background:#FFFBEB;border-bottom:1px solid #FDE68A;color:#78350F;font-size:13px}
+.viewas .wrap{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);
+  padding:var(--s2) var(--s4);flex-wrap:wrap}
 </style>
 </head>
 
@@ -202,6 +217,40 @@ async function openFile(path) {
 }
 
 const fileName = (p) => (p ? p.split("/").pop().replace(/^\d+-/, "") : "");
+
+// Le bac des photos est public : l'adresse est directe, sans lien signé.
+function avatarUrl(path) {
+  if (!path) return null;
+  const { data } = db.storage.from("avatars").getPublicUrl(path);
+  return data?.publicUrl || null;
+}
+
+const initials = (name) =>
+  (name || "?").split(/\s+/).slice(0, 2).map((w) => w[0] || "").join("").toUpperCase();
+
+// Photo, ou monogramme de repli.
+function Avatar({ name, path, size = 40 }) {
+  const url = avatarUrl(path);
+  const s = `width:${size}px;height:${size}px`;
+  return url
+    ? html`<img class="avatar" src=${url} alt=${name || ""} style=${s} />`
+    : html`<div class="avatar-fb" style=${`${s};font-size:${Math.round(size / 2.6)}px`}>${initials(name)}</div>`;
+}
+
+// Pastille de rôle, affichée partout où un nom apparaît.
+function Role({ role }) {
+  if (role === "encadrant") return html`<span class="role enc">Encadrant</span>`;
+  if (role === "admin")     return html`<span class="role adm">Bureau</span>`;
+  return null;
+}
+
+const monthStart = (offset = 0) => {
+  const d = new Date();
+  d.setDate(1); d.setMonth(d.getMonth() + offset);
+  return d.toISOString().slice(0, 10);
+};
+const monthLabel = (iso) =>
+  new Date(iso).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
 
 /* ==================================================================
    3. VITRINE PUBLIQUE
@@ -581,7 +630,7 @@ function Forum({ me }) {
   async function loadThreads() {
     setLoading(true);
     const { data, error } = await db.from("forum_threads")
-      .select("id, title, body, created_at, author_id, profiles(full_name), forum_replies(id)")
+      .select("id, title, body, created_at, author_id, profiles(full_name, role, avatar_path), forum_replies(id)")
       .order("created_at", { ascending: false });
     if (error) setErr(error.message); else setThreads(data || []);
     setLoading(false);
@@ -590,7 +639,7 @@ function Forum({ me }) {
   async function openThread(t) {
     setOpen(t); setReplies([]);
     const { data } = await db.from("forum_replies")
-      .select("id, body, created_at, author_id, profiles(full_name)")
+      .select("id, body, created_at, author_id, profiles(full_name, role, avatar_path)")
       .eq("thread_id", t.id).order("created_at");
     setReplies(data || []);
   }
@@ -621,13 +670,13 @@ function Forum({ me }) {
     <div>
       <button class="plain" onClick=${() => { setOpen(null); loadThreads(); }}>← Retour au forum</button>
       <h1 style="font-size:24px;margin:var(--s3) 0 var(--s1)">${open.title}</h1>
-      <p class="muted" style="margin-bottom:var(--s4)">${open.profiles?.full_name || "Anonyme"} · ${since(open.created_at)}</p>
+      <p class="muted" style="margin-bottom:var(--s4)">${open.profiles?.full_name || "Anonyme"}<${Role} role=${open.profiles?.role} /> · ${since(open.created_at)}</p>
       ${open.body && html`<div class="card" style="margin-bottom:var(--s4)"><p style="white-space:pre-wrap">${open.body}</p></div>`}
       <div class="card">
         ${replies.length === 0 && html`<p class="muted">Aucune réponse pour l'instant.</p>`}
         ${replies.map((r) => html`<div class="row" key=${r.id} style="align-items:flex-start">
           <div style="flex:1">
-            <p class="muted" style="margin-bottom:var(--s1)">${r.profiles?.full_name || "Anonyme"} · ${since(r.created_at)}</p>
+            <p class="muted" style="margin-bottom:var(--s1)">${r.profiles?.full_name || "Anonyme"}<${Role} role=${r.profiles?.role} /> · ${since(r.created_at)}</p>
             <p style="white-space:pre-wrap">${r.body}</p></div>
           ${(r.author_id === me.id || me.role !== "eleve") && html`
             <button class="danger" onClick=${() => remove(r.id, "forum_replies", () => openThread(open))}>Supprimer</button>`}
@@ -660,7 +709,7 @@ function Forum({ me }) {
         ${threads.map((t) => html`<div key=${t.id} style="display:flex;align-items:center;gap:var(--s2)">
           <button class="rowbtn" onClick=${() => openThread(t)}>
             <span style="display:block">${t.title}</span>
-            <span class="muted">${t.profiles?.full_name || "Anonyme"} · ${(t.forum_replies||[]).length} réponses · ${since(t.created_at)}</span>
+            <span class="muted">${t.profiles?.full_name || "Anonyme"}<${Role} role=${t.profiles?.role} /> · ${(t.forum_replies||[]).length} réponses · ${since(t.created_at)}</span>
           </button>
           ${(t.author_id === me.id || me.role !== "eleve") && html`
             <button class="danger" style="padding-right:var(--s3)"
@@ -674,7 +723,7 @@ function Forum({ me }) {
 /* ==================================================================
    8. MESSAGERIE
    ================================================================== */
-function Messagerie({ me, students }) {
+function Messagerie({ me, students, tags }) {
   const staff = me.role !== "eleve";
   const [target, setTarget] = useState(staff ? (students[0]?.id || null) : me.id);
   const [msgs, setMsgs] = useState([]);
@@ -688,7 +737,7 @@ function Messagerie({ me, students }) {
 
   async function loadMsgs() {
     const { data, error } = await db.from("messages")
-      .select("id, body, created_at, sender_id, read_at, profiles!messages_sender_id_fkey(full_name)")
+      .select("id, body, created_at, sender_id, read_at, profiles!messages_sender_id_fkey(full_name, role, avatar_path)")
       .eq("student_id", target).order("created_at");
     if (error) { setErr(error.message); return; }
     setMsgs(data || []);
@@ -731,7 +780,8 @@ function Messagerie({ me, students }) {
         Cette conversation est privée vis-à-vis des autres élèves. Elle reste
         consultable par les responsables de l'association, qui veillent à la
         sécurité des échanges entre adultes et mineurs.</p>
-      ${panel}
+      <${CarteEncadrant} tutorId=${me.tutor_id} tags=${tags || []} />
+      <div style="margin-top:var(--s3)">${panel}</div>
     </div>`;
 
   return html`
@@ -1218,6 +1268,250 @@ function BadgesFiche({ me, studentId }) {
 }
 
 /* ==================================================================
+   8quinquies. MON PROFIL (ENCADREMENT)
+   ================================================================== */
+function Profil({ me, reload }) {
+  const [f, setF] = useState(null);
+  const [tags, setTags] = useState([]);
+  const [avail, setAvail] = useState({ hours_per_week:"", note:"" });
+  const [month, setMonth] = useState(monthStart(0));
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+
+  useEffect(() => { load(); }, []);
+  useEffect(() => { loadAvail(month); }, [month]);
+
+  async function load() {
+    const { data: p } = await db.from("profiles")
+      .select("full_name, bio, bio_correction, correct_anonymously, subjects, avatar_path")
+      .eq("id", me.id).single();
+    setF({ ...p, subjects: p?.subjects || [] });
+    const { data: t } = await db.from("subject_tags").select("*").order("position");
+    setTags(t || []);
+  }
+
+  async function loadAvail(m) {
+    const { data } = await db.from("staff_availability")
+      .select("hours_per_week, note").eq("user_id", me.id).eq("month", m).maybeSingle();
+    setAvail({ hours_per_week: data?.hours_per_week ?? "", note: data?.note || "" });
+  }
+
+  async function savePhoto(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { setErr("La photo ne doit pas dépasser 2 Mo."); return; }
+    setBusy(true); setErr(""); setMsg("");
+    const path = `${me.id}/photo-${Date.now()}-${file.name.replace(/[^\w.\-]/g, "_")}`;
+    const { error } = await db.storage.from("avatars").upload(path, file, { upsert:true });
+    if (error) setErr(error.message);
+    else {
+      const { error: e2 } = await db.from("profiles").update({ avatar_path: path }).eq("id", me.id);
+      if (e2) setErr(e2.message);
+      else { setMsg("Photo mise à jour."); await load(); await reload(); }
+    }
+    setBusy(false);
+  }
+
+  async function saveProfile() {
+    setBusy(true); setErr(""); setMsg("");
+    const { error } = await db.from("profiles").update({
+      bio: f.bio?.trim() || null,
+      bio_correction: f.bio_correction?.trim() || null,
+      correct_anonymously: !!f.correct_anonymously,
+      subjects: f.subjects,
+    }).eq("id", me.id);
+    if (error) setErr(error.message);
+    else { setMsg("Profil enregistré."); await reload(); }
+    setBusy(false);
+  }
+
+  async function saveAvail() {
+    setBusy(true); setErr(""); setMsg("");
+    const { error } = await db.from("staff_availability").upsert({
+      user_id: me.id, month,
+      hours_per_week: Number(avail.hours_per_week) || 0,
+      note: avail.note?.trim() || null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id,month" });
+    if (error) setErr(error.message);
+    else setMsg(`Engagement enregistré pour ${monthLabel(month)}.`);
+    setBusy(false);
+  }
+
+  if (!f) return html`<p class="muted">Chargement du profil…</p>`;
+
+  const toggleTag = (code) => setF({ ...f,
+    subjects: f.subjects.includes(code)
+      ? f.subjects.filter((s) => s !== code)
+      : [...f.subjects, code] });
+
+  return html`
+    <div>
+      <h1 style="font-size:26px">Mon profil</h1>
+      <p class="muted" style="margin-bottom:var(--s4)">
+        Ce que tes élèves voient de toi, et ce que le bureau utilise pour répartir le travail.</p>
+      ${err && html`<p class="error" style="margin-bottom:var(--s3)">${err}</p>`}
+      ${msg && html`<p class="notice" style="margin-bottom:var(--s3)">${msg}</p>`}
+
+      <div class="card">
+        <p class="eyebrow" style="margin-bottom:var(--s3)">Photo</p>
+        <div style="display:flex;align-items:center;gap:var(--s4);flex-wrap:wrap">
+          <${Avatar} name=${f.full_name} path=${f.avatar_path} size=${72} />
+          <div style="flex:1;min-width:200px">
+            <input type="file" accept="image/*" disabled=${busy} onChange=${savePhoto} />
+            <p class="muted" style="margin-top:var(--s2)">
+              Visible par tes élèves. Format carré de préférence, 2 Mo maximum.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="eyebrow" style="margin-bottom:var(--s3)">Présentation</p>
+        <div class="field"><label>Qui es-tu ? — visible par tes élèves</label>
+          <textarea value=${f.bio || ""} onInput=${(e) => setF({ ...f, bio:e.target.value })}
+            placeholder="Ton parcours, ton IEP, ce que tu aimes transmettre…"></textarea></div>
+
+        <div class="field"><label>Ta manière de corriger — affichée avec les copies rendues</label>
+          <textarea value=${f.bio_correction || ""} onInput=${(e) => setF({ ...f, bio_correction:e.target.value })}
+            placeholder="Ce sur quoi tu insistes, ce que tu attends d'une copie…"></textarea></div>
+
+        <label class="check" style="margin-bottom:var(--s3)">
+          <input type="checkbox" checked=${!!f.correct_anonymously}
+            onChange=${(e) => setF({ ...f, correct_anonymously:e.target.checked })} />
+          <span>Corriger sous anonymat. Les élèves verront « un correcteur de l'équipe »
+            au lieu de ton nom. Le bureau, lui, sait toujours qui a corrigé.</span>
+        </label>
+
+        <div class="field">
+          <label>Matières que tu préfères encadrer</label>
+          <div class="tags">
+            ${tags.map((t) => html`<span key=${t.code}
+              class=${"tag" + (f.subjects.includes(t.code) ? " on" : "")}
+              onClick=${() => toggleTag(t.code)}>${t.label}</span>`)}
+          </div>
+        </div>
+
+        <button disabled=${busy} onClick=${saveProfile}>Enregistrer mon profil</button>
+      </div>
+
+      <div class="card">
+        <p class="eyebrow" style="margin-bottom:var(--s3)">Mon engagement</p>
+        <p class="muted" style="margin-bottom:var(--s3)">
+          Combien de temps peux-tu donner par semaine ? À réajuster chaque mois — mieux vaut
+          annoncer deux heures et les tenir que cinq et décrocher.</p>
+        <div class="grid2">
+          <div class="field"><label>Mois concerné</label>
+            <select value=${month} onChange=${(e) => setMonth(e.target.value)}>
+              ${[0,1,2].map((o) => html`<option key=${o} value=${monthStart(o)}>${monthLabel(monthStart(o))}</option>`)}
+            </select></div>
+          <div class="field"><label>Heures par semaine</label>
+            <input type="number" step="0.5" min="0" value=${avail.hours_per_week}
+              onInput=${(e) => setAvail({ ...avail, hours_per_week:e.target.value })} /></div>
+        </div>
+        <div class="field"><label>Précision (facultatif)</label>
+          <input value=${avail.note} onInput=${(e) => setAvail({ ...avail, note:e.target.value })}
+            placeholder="Plutôt le week-end, indisponible la semaine du 12…" /></div>
+        <button class="ghost" disabled=${busy} onClick=${saveAvail}>Enregistrer l'engagement</button>
+      </div>
+    </div>`;
+}
+
+/* ==================================================================
+   8sexies. ÉQUIPE (BUREAU)
+   ================================================================== */
+function Equipe({ tags, onSetRole }) {
+  const [rows, setRows] = useState([]);
+  const [err, setErr] = useState("");
+
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    const { data, error } = await db.from("staff_overview").select("*").order("full_name");
+    if (error) setErr(error.message); else setRows(data || []);
+  }
+
+  const label = (code) => tags.find((t) => t.code === code)?.label || code;
+  const total = rows.reduce((n, r) => n + Number(r.hours_this_month || 0), 0);
+
+  return html`
+    <div>
+      <h1 style="font-size:26px">L'équipe</h1>
+      <p class="muted" style="margin-bottom:var(--s4)">
+        ${rows.length} encadrants · ${total} heures par semaine engagées ce mois-ci</p>
+      ${err && html`<p class="error" style="margin-bottom:var(--s3)">${err}</p>`}
+
+      ${rows.map((r) => html`<div class="card" key=${r.id}>
+        <div style="display:flex;gap:var(--s4);align-items:flex-start;flex-wrap:wrap">
+          <${Avatar} name=${r.full_name} path=${r.avatar_path} size=${56} />
+          <div style="flex:1;min-width:220px">
+            <p style="font-size:17px">${r.full_name}<${Role} role=${r.role} /></p>
+            <p class="muted">${r.students} élève${r.students > 1 ? "s" : ""} rattaché${r.students > 1 ? "s" : ""}
+              ${r.correct_anonymously ? " · corrige sous anonymat" : ""}</p>
+            ${(r.subjects || []).length > 0 && html`<div class="tags" style="margin-top:var(--s2)">
+              ${r.subjects.map((s) => html`<span key=${s} class="tag">${label(s)}</span>`)}
+            </div>`}
+          </div>
+          <div style="text-align:right;min-width:150px">
+            <p style="font-family:var(--serif);font-size:24px">
+              ${r.hours_this_month || 0}<span class="muted" style="font-size:13px"> h/sem.</span></p>
+            <p class="muted" style="font-size:12px">
+              ${r.availability_updated ? `déclaré le ${dateFr(r.availability_updated)}` : "aucun engagement déclaré"}</p>
+            ${r.availability_note && html`<p class="muted" style="font-size:12px;font-style:italic">${r.availability_note}</p>`}
+            <select value=${r.role} style="margin-top:var(--s2)"
+              onChange=${async (e) => { await onSetRole(r.id, e.target.value); await load(); }}>
+              <option value="eleve">Élève</option>
+              <option value="encadrant">Encadrant</option>
+              <option value="admin">Bureau</option>
+            </select>
+          </div>
+        </div>
+      </div>`)}
+
+      ${rows.some((r) => !r.hours_this_month) && html`<p class="muted" style="margin-top:var(--s3)">
+        Les encadrants sans engagement déclaré ne l'ont pas encore renseigné dans leur profil.</p>`}
+    </div>`;
+}
+
+/* ==================================================================
+   8septies. CARTE DE L'ENCADRANT (VUE ÉLÈVE)
+   ================================================================== */
+function CarteEncadrant({ tutorId, tags }) {
+  const [t, setT] = useState(null);
+
+  useEffect(() => { if (tutorId) load(); }, [tutorId]);
+
+  async function load() {
+    const { data } = await db.from("profiles")
+      .select("full_name, role, bio, avatar_path, subjects").eq("id", tutorId).single();
+    setT(data);
+  }
+
+  if (!tutorId) return html`<div class="card">
+    <p class="eyebrow" style="margin-bottom:var(--s2)">Ton encadrant</p>
+    <p class="muted">Aucun encadrant ne t'est encore rattaché. Le bureau s'en occupe.</p></div>`;
+
+  if (!t) return null;
+  const label = (code) => tags.find((x) => x.code === code)?.label || code;
+
+  return html`<div class="card">
+    <p class="eyebrow" style="margin-bottom:var(--s3)">Ton encadrant</p>
+    <div style="display:flex;gap:var(--s4);align-items:flex-start;flex-wrap:wrap">
+      <${Avatar} name=${t.full_name} path=${t.avatar_path} size=${64} />
+      <div style="flex:1;min-width:200px">
+        <p style="font-size:17px">${t.full_name}<${Role} role=${t.role} /></p>
+        ${t.bio
+          ? html`<p class="muted" style="margin-top:var(--s2);white-space:pre-wrap">${t.bio}</p>`
+          : html`<p class="muted" style="margin-top:var(--s2)">Cet encadrant n'a pas encore rempli sa présentation.</p>`}
+        ${(t.subjects || []).length > 0 && html`<div class="tags" style="margin-top:var(--s3)">
+          ${t.subjects.map((s) => html`<span key=${s} class="tag">${label(s)}</span>`)}
+        </div>`}
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ==================================================================
    9. LISTE DES ÉLÈVES ET FICHE INDIVIDUELLE
    ================================================================== */
 function Eleves({ me, rows, totalLessons, onOpen, title, subtitle }) {
@@ -1378,6 +1672,17 @@ function Fiche({ me, studentId, courses, tutors, onBack, reload }) {
               onClick=${() => saveField("student_details", { member_since: new Date().toISOString().slice(0,10) })}>
               Enregistrer l'adhésion</button>`}
           </div>
+
+          ${isAdmin && html`<div class="card">
+            <p class="eyebrow" style="margin-bottom:var(--s3)">Rôle</p>
+            <select value=${p.role} onChange=${(e) => saveField("profiles", { role: e.target.value })}>
+              <option value="eleve">Élève</option>
+              <option value="encadrant">Encadrant</option>
+              <option value="admin">Bureau</option>
+            </select>
+            <p class="muted" style="margin-top:var(--s2)">
+              Promouvoir en encadrant donne accès aux élèves rattachés et à la correction.</p>
+          </div>`}
 
           ${isAdmin && html`<div class="card">
             <p class="eyebrow" style="margin-bottom:var(--s3)">Encadrant rattaché</p>
@@ -1641,6 +1946,8 @@ function App() {
   const [fresh, setFresh] = useState(0);
   const [rows, setRows] = useState([]);
   const [tutors, setTutors] = useState([]);
+  const [tags, setTags] = useState([]);
+  const [viewAs, setViewAs] = useState(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [view, setView] = useState({ page:"cours" });
   const [loading, setLoading] = useState(true);
@@ -1670,6 +1977,9 @@ function App() {
 
       const { data: mine } = await db.from("student_details").select("*").eq("user_id", uid).maybeSingle();
       setMyDetails(mine || {});
+
+      const { data: tg } = await db.from("subject_tags").select("*").order("position");
+      setTags(tg || []);
 
       if (prof.role === "eleve" && prof.status !== "active") { setLoading(false); return; }
 
@@ -1738,6 +2048,12 @@ function App() {
     setDone(next); setBusy(false);
   }
 
+  async function setRole(id, role) {
+    const { error } = await db.from("profiles").update({ role }).eq("id", id);
+    if (error) { setFail(error.message); return; }
+    await load();
+  }
+
   if (loading && !session) return html`<div class="center-page"><p class="muted">Chargement…</p></div>`;
   if (!session) return screen === "connexion"
     ? html`<${Connexion} onBack=${() => setScreen("vitrine")} />`
@@ -1747,24 +2063,39 @@ function App() {
   if (me.role === "eleve" && me.status !== "active")
     return html`<${EnAttente} me=${me} details=${myDetails} reload=${load} />`;
 
-  const staff = me.role !== "eleve";
+  // Rôle affiché : purement cosmétique. Les droits restent ceux du vrai
+  // rôle, appliqués par la base. Une bascule peut cacher, jamais ouvrir.
+  const shown = viewAs || me.role;
+  const staff = shown !== "eleve";
   const visible = staff ? courses : courses.filter((c) => c.published);
   const xp = myXp.xp || 0;
   const totalLessons = visible.reduce((n,c) => n + c.lessons.length, 0);
   const unreadTotal = rows.reduce((n,r) => n + (r.unread||0), 0);
 
-  const tabs = me.role === "admin"
+  const tabs = shown === "admin"
     ? [["cours","Cours"], ["gestion","Gestion"], ["devoirs","Devoirs"], ["eleves","Élèves"],
+       ["equipe","Équipe"],
        ["validation", pendingCount ? `Validation (${pendingCount})` : "Validation"],
-       ["forum","Forum"], ["messages", unreadTotal ? `Messages (${unreadTotal})` : "Messages"]]
-    : me.role === "encadrant"
+       ["forum","Forum"], ["messages", unreadTotal ? `Messages (${unreadTotal})` : "Messages"],
+       ["profil","Mon profil"]]
+    : shown === "encadrant"
       ? [["cours","Cours"], ["devoirs","Devoirs"], ["eleves","Mes élèves"], ["forum","Forum"],
-         ["messages", unreadTotal ? `Messages (${unreadTotal})` : "Messages"]]
+         ["messages", unreadTotal ? `Messages (${unreadTotal})` : "Messages"], ["profil","Mon profil"]]
       : [["cours","Mes cours"], ["devoirs","Devoirs"], ["badges","Badges"],
          ["forum","Forum"], ["messages","Mon encadrant"]];
 
+  const lower = me.role === "admin" ? ["encadrant", "eleve"] : me.role === "encadrant" ? ["eleve"] : [];
+  const okTab = tabs.some(([k]) => k === view.page);
+
   return html`
     <div>
+      ${viewAs && html`<div class="viewas"><div class="wrap">
+        <span>Affichage en vue ${ROLES[viewAs].toLowerCase()} — tes droits réels
+          restent ceux du rôle ${ROLES[me.role].toLowerCase()}.</span>
+        <button class="ghost tiny" onClick=${() => { setViewAs(null); setView({ page:"cours" }); }}>
+          Revenir à ma vue</button>
+      </div></div>`}
+
       <div class="topbar"><div class="wrap">
         <div style="display:flex;align-items:center;gap:var(--s5);flex-wrap:wrap">
           <span class="brand">${ASSO.nom}</span>
@@ -1774,6 +2105,11 @@ function App() {
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:var(--s3)">
+          ${lower.length > 0 && html`<select value=${viewAs || ""} style="width:auto;padding:4px var(--s2);font-size:13px"
+            onChange=${(e) => { setViewAs(e.target.value || null); setView({ page:"cours" }); }}>
+            <option value="">Ma vue (${ROLES[me.role].toLowerCase()})</option>
+            ${lower.map((r) => html`<option key=${r} value=${r}>Voir comme ${ROLES[r].toLowerCase()}</option>`)}
+          </select>`}
           <span style="font-size:13px;color:var(--gray-soft)">${me.full_name}</span>
           <button class="plain" style="color:var(--gray-soft)" onClick=${() => db.auth.signOut()}>Déconnexion</button>
         </div>
@@ -1782,7 +2118,13 @@ function App() {
       <div class="wrap" style="padding-top:var(--s5);padding-bottom:var(--s6)">
         ${fail && html`<p class="error" style="margin-bottom:var(--s4)">${fail}</p>`}
 
-        ${view.page === "gestion" ? html`<${Gestion} courses=${courses} reload=${load} />`
+        ${!okTab ? html`<${MesCours} me=${me} courses=${visible} done=${done} xp=${xp}
+            streak=${streak} fresh=${fresh}
+            onBadges=${() => { setFresh(0); setView({ page:"badges" }); }}
+            onOpen=${(id) => setView({ page:"cours", id })} />`
+        : view.page === "profil" ? html`<${Profil} me=${me} reload=${load} />`
+        : view.page === "equipe" ? html`<${Equipe} tags=${tags} onSetRole=${setRole} />`
+        : view.page === "gestion" ? html`<${Gestion} courses=${courses} reload=${load} />`
         : view.page === "devoirs"
           ? (staff
               ? html`<${DevoirsAdmin} me=${me} courses=${courses} reload=${load} />`
@@ -1801,7 +2143,7 @@ function App() {
                          : `${rows.length} élèves te sont rattachés`} />`)
         : view.page === "badges" ? html`<${Badges} me=${me} />`
         : view.page === "forum" ? html`<${Forum} me=${me} />`
-        : view.page === "messages" ? html`<${Messagerie} me=${me} students=${rows} />`
+        : view.page === "messages" ? html`<${Messagerie} me=${me} students=${rows} tags=${tags} />`
         : view.id ? html`<${Cours} course=${visible.find((c)=>c.id===view.id)} done=${done} busy=${busy}
             readOnly=${staff} onToggle=${toggle} onBack=${() => setView({ page:"cours" })} />`
         : html`<${MesCours} me=${me} courses=${visible} done=${done} xp=${xp}
