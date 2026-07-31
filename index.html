@@ -118,6 +118,16 @@ tr:last-child td{border-bottom:none}
 .viewas{background:#FFFBEB;border-bottom:1px solid #FDE68A;color:#78350F;font-size:13px}
 .viewas .wrap{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);
   padding:var(--s2) var(--s4);flex-wrap:wrap}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:var(--s3)}
+.stat{border:1px solid var(--line);border-radius:var(--radius);background:var(--white);padding:var(--s3) var(--s4)}
+.stat b{display:block;font-family:var(--serif);font-size:28px;font-weight:400;line-height:1.1}
+.stat span{font-size:13px;color:var(--gray)}
+.stat.warn-stat{background:#FFFBEB;border-color:#FDE68A}
+.stat.warn-stat b{color:#78350F}
+.slot{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);
+  border:1px solid var(--line);border-radius:var(--radius);padding:var(--s2) var(--s3);
+  margin-bottom:var(--s2);font-size:14px}
+.slot.chosen{border-color:var(--ok);background:#ECFDF5}
 </style>
 </head>
 
@@ -781,6 +791,7 @@ function Messagerie({ me, students, tags }) {
         consultable par les responsables de l'association, qui veillent à la
         sécurité des échanges entre adultes et mineurs.</p>
       <${CarteEncadrant} tutorId=${me.tutor_id} tags=${tags || []} />
+      <div style="margin-top:var(--s3)"><${MesRdv} me=${me} /></div>
       <div style="margin-top:var(--s3)">${panel}</div>
     </div>`;
 
@@ -824,12 +835,12 @@ function Devoirs({ me, reload }) {
   async function load() {
     setLoading(true); setErr("");
     const { data: a, error: e1 } = await db.from("assignments")
-      .select("id, title, instructions, due_at, max_score, xp, position, courses(title)")
+      .select("id, title, instructions, due_at, max_score, xp, position, anonymous_correction, courses(title)")
       .eq("published", true);
     if (e1) setErr(e1.message);
     setItems((a || []).sort((x, y) => (x.due_at || "9") .localeCompare(y.due_at || "9")));
 
-    const { data: s } = await db.from("submissions").select("*").eq("student_id", me.id);
+    const { data: s } = await db.from("my_submissions").select("*");
     setSubs(Object.fromEntries((s || []).map((x) => [x.assignment_id, x])));
 
     const { data: p } = await db.from("submission_xp").select("*").eq("student_id", me.id);
@@ -869,6 +880,8 @@ function Devoirs({ me, reload }) {
         <h1 style="font-size:26px;margin-bottom:var(--s2)">${a.title}</h1>
         <p class=${dl.late ? "muted" : "muted"} style=${dl.late ? "color:var(--alert)" : ""}>
           ${dl.label} · barème sur ${a.max_score} · ${a.xp} XP de référence</p>
+        ${a.anonymous_correction && html`<p class="muted" style="margin-top:var(--s2)">
+          Ce devoir sera corrigé sous anonymat par un membre de l'équipe encadrante.</p>`}
 
         ${a.instructions && html`<div class="card" style="margin-top:var(--s4)">
           <p class="eyebrow" style="margin-bottom:var(--s2)">Consigne</p>
@@ -881,6 +894,23 @@ function Devoirs({ me, reload }) {
               <span style="font-family:var(--serif);font-size:32px">${sub.score}</span>
               <span class="muted">/ ${a.max_score}</span></div>
             ${sub.feedback && html`<p style="white-space:pre-wrap;margin-bottom:var(--s3)">${sub.feedback}</p>`}
+
+            <div style="border-top:1px solid var(--line);padding-top:var(--s3);margin-bottom:var(--s3)">
+              <p class="eyebrow" style="margin-bottom:var(--s2)">Ton correcteur</p>
+              ${sub.anonymous
+                ? html`<p class="muted">Cette copie a été corrigée par un membre de
+                    l'équipe encadrante, sous anonymat. Le bureau de l'association
+                    sait qui a corrigé et reste garant de la correction.</p>`
+                : html`<div style="display:flex;gap:var(--s3);align-items:flex-start;flex-wrap:wrap">
+                    <${Avatar} name=${sub.corrector_name} path=${sub.corrector_avatar} size=${48} />
+                    <div style="flex:1;min-width:180px">
+                      <p style="font-size:15px">${sub.corrector_name || "Un encadrant"}</p>
+                      ${sub.corrector_bio && html`<p class="muted" style="margin-top:var(--s1);white-space:pre-wrap">
+                        ${sub.corrector_bio}</p>`}
+                    </div>
+                  </div>`}
+            </div>
+
             ${p && html`<div style="border-top:1px solid var(--line);padding-top:var(--s3)">
               <p class="eyebrow" style="margin-bottom:var(--s2)">XP obtenus</p>
               <dl class="dl">
@@ -950,30 +980,53 @@ function Devoirs({ me, reload }) {
 /* ==================================================================
    8ter. DEVOIRS — CÔTÉ ENCADREMENT
    ================================================================== */
-const EMPTY_ASSIGN = { title:"", course_id:"", instructions:"", due_at:"", max_score:20, xp:100 };
+const EMPTY_ASSIGN = { title:"", course_id:"", instructions:"", due_at:"", max_score:20, xp:100, anonymous_correction:false };
 
-function DevoirsAdmin({ me, courses, reload }) {
+function DevoirsAdmin({ me, courses, tags, reload }) {
   const [items, setItems] = useState([]);
   const [sel, setSel] = useState(null);
   const [subs, setSubs] = useState([]);
   const [draft, setDraft] = useState(null);
   const [editing, setEdit] = useState(null);
   const [grade, setGrade] = useState(null);
+  const [team, setTeam] = useState([]);
+  const [pool, setPool] = useState([]);
   const [err, setErr] = useState("");
+  const isAdmin = me.role === "admin";
 
-  useEffect(() => { load(); }, []);
-  useEffect(() => { if (sel) loadSubs(sel); }, [sel]);
+  useEffect(() => { load(); loadTeam(); }, []);
+  useEffect(() => { if (sel) { loadSubs(sel); loadPool(sel); } }, [sel]);
+
+  async function loadTeam() {
+    const { data } = await db.from("staff_overview").select("*").order("full_name");
+    setTeam(data || []);
+  }
+
+  async function loadPool(id) {
+    const { data } = await db.from("assignment_correctors")
+      .select("corrector_id").eq("assignment_id", id);
+    setPool((data || []).map((x) => x.corrector_id));
+  }
+
+  async function togglePool(cid) {
+    const on = pool.includes(cid);
+    const { error } = on
+      ? await db.from("assignment_correctors").delete()
+          .eq("assignment_id", sel).eq("corrector_id", cid)
+      : await db.from("assignment_correctors").insert({ assignment_id: sel, corrector_id: cid });
+    if (error) setErr(error.message); else await loadPool(sel);
+  }
 
   async function load() {
     const { data, error } = await db.from("assignments")
-      .select("id, title, instructions, due_at, max_score, xp, published, course_id, courses(title)")
+      .select("id, title, instructions, due_at, max_score, xp, published, course_id, anonymous_correction, courses(title)")
       .order("created_at", { ascending:false });
     if (error) setErr(error.message); else setItems(data || []);
   }
 
   async function loadSubs(id) {
     const { data } = await db.from("submissions")
-      .select("*, profiles!submissions_student_id_fkey(full_name)")
+      .select("*, profiles!submissions_student_id_fkey(full_name), claimer:profiles!submissions_claimed_by_fkey(full_name)")
       .eq("assignment_id", id).order("submitted_at");
     setSubs(data || []);
   }
@@ -987,6 +1040,7 @@ function DevoirsAdmin({ me, courses, reload }) {
       due_at: draft.due_at ? new Date(draft.due_at).toISOString() : null,
       max_score: Number(draft.max_score) || 20,
       xp: Number(draft.xp) || 100,
+      anonymous_correction: !!draft.anonymous_correction,
     };
     const { error } = editing
       ? await db.from("assignments").update(payload).eq("id", editing)
@@ -1039,6 +1093,12 @@ function DevoirsAdmin({ me, courses, reload }) {
         </div>
         <div class="field" style="max-width:200px"><label>XP de référence</label>
           <input type="number" value=${draft.xp} onInput=${(e)=>setDraft({...draft,xp:e.target.value})} /></div>
+        <label class="check" style="margin-bottom:var(--s3)">
+          <input type="checkbox" checked=${!!draft.anonymous_correction}
+            onChange=${(e)=>setDraft({...draft,anonymous_correction:e.target.checked})} />
+          <span>Correction anonyme. Les élèves ne sauront jamais qui a corrigé leur copie.
+            À décider maintenant : ce choix est annoncé à l'élève dès l'ouverture du devoir.</span>
+        </label>
         <p class="muted" style="margin-bottom:var(--s3)">
           Sur ${draft.xp || 100} XP : ${Math.round((draft.xp||100)*0.5)} au dépôt dans les délais
           (${Math.round((draft.xp||100)*0.25)} en retard), jusqu'à ${Math.round((draft.xp||100)*0.5)} selon la note,
@@ -1049,7 +1109,9 @@ function DevoirsAdmin({ me, courses, reload }) {
         </div>
       </form>`}
 
-      <div class="split3">
+      <${FileCorrection} me=${me} onGrade=${(aid) => setSel(aid)} />
+
+      <div class="split3" style="margin-top:var(--s3)">
         <div class="card" style="padding:var(--s2);align-self:start">
           ${items.length === 0 && html`<p class="muted" style="padding:var(--s2)">Aucun devoir.</p>`}
           ${items.map((a) => html`<button key=${a.id} class=${"rowbtn" + (a.id===sel?" on":"")}
@@ -1083,7 +1145,33 @@ function DevoirsAdmin({ me, courses, reload }) {
                 </div>
               </div>
               ${current.instructions && html`<p class="muted" style="margin-top:var(--s3);white-space:pre-wrap">${current.instructions}</p>`}
+              ${current.anonymous_correction && html`<p class="muted" style="margin-top:var(--s3)">
+                Correction anonyme : les élèves ne verront pas qui a corrigé.</p>`}
             </div>
+
+            ${isAdmin && html`<div class="card">
+              <p class="eyebrow" style="margin-bottom:var(--s2)">Correcteurs désignés</p>
+              <p class="muted" style="margin-bottom:var(--s3)">
+                Chaque correcteur désigné voit les copies dans sa file. La première
+                personne qui prend une copie la verrouille pour les autres.</p>
+              ${team.length === 0 && html`<p class="muted">Aucun encadrant dans l'équipe pour l'instant.</p>`}
+              ${team.map((t) => html`<div class="row" key=${t.id}>
+                <div style="display:flex;gap:var(--s3);align-items:center;flex:1;min-width:0">
+                  <${Avatar} name=${t.full_name} path=${t.avatar_path} size=${34} />
+                  <div style="min-width:0">
+                    <span style="font-size:14px">${t.full_name}</span>
+                    <span class="muted" style="display:block">
+                      ${t.hours_this_month || 0} h/sem. · ${t.students} élève${t.students > 1 ? "s" : ""}
+                      ${(t.subjects || []).length
+                        ? " · " + t.subjects.map((s) => tags.find((x) => x.code === s)?.label || s).join(", ")
+                        : ""}</span>
+                  </div>
+                </div>
+                <button class=${pool.includes(t.id) ? "tiny" : "ghost tiny"}
+                  onClick=${() => togglePool(t.id)}>
+                  ${pool.includes(t.id) ? "Désigné" : "Désigner"}</button>
+              </div>`)}
+            </div>`}
 
             <div class="card">
               <p class="eyebrow" style="margin-bottom:var(--s3)">${subs.length} rendus</p>
@@ -1100,10 +1188,13 @@ function DevoirsAdmin({ me, courses, reload }) {
                   ${s.file_path && html`<button class="ghost tiny" onClick=${() => openFile(s.file_path)}>Ouvrir</button>`}
                   ${s.graded_at
                     ? html`<span class="pill live">${s.score} / ${current.max_score}</span>`
-                    : html`<span class="pill wait">à corriger</span>`}
-                  <button class="ghost tiny" onClick=${() => setGrade({
-                    id: s.id, score: s.score ?? "", feedback: s.feedback || "", name: s.profiles?.full_name })}>
-                    ${s.graded_at ? "Revoir" : "Corriger"}</button>
+                    : s.claimed_by && s.claimed_by !== me.id
+                      ? html`<span class="pill">prise par ${s.claimer?.full_name || "un correcteur"}</span>`
+                      : html`<span class="pill wait">à corriger</span>`}
+                  ${(s.graded_at || isAdmin || !s.claimed_by || s.claimed_by === me.id) && html`
+                    <button class="ghost tiny" onClick=${() => setGrade({
+                      id: s.id, score: s.score ?? "", feedback: s.feedback || "", name: s.profiles?.full_name })}>
+                      ${s.graded_at ? "Revoir" : "Corriger"}</button>`}
                 </div>
               </div>`)}
 
@@ -1123,6 +1214,79 @@ function DevoirsAdmin({ me, courses, reload }) {
             </div>
           </div>`}
       </div>
+    </div>`;
+}
+
+/* ==================================================================
+   8ter-bis. FILE DE CORRECTION
+   ================================================================== */
+function FileCorrection({ me, onGrade }) {
+  const [rows, setRows] = useState([]);
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(null);
+
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    const { data, error } = await db.from("correction_queue")
+      .select("*").order("submitted_at");
+    if (error) setErr(error.message); else setRows(data || []);
+  }
+
+  async function claim(id) {
+    setBusy(id); setErr("");
+    const { data, error } = await db.rpc("claim_submission", { sub: id });
+    if (error) setErr(error.message);
+    else if (data === false) setErr("Trop tard — un autre correcteur vient de prendre cette copie.");
+    await load(); setBusy(null);
+  }
+
+  async function release(id) {
+    setBusy(id);
+    await db.rpc("release_submission", { sub: id });
+    await load(); setBusy(null);
+  }
+
+  const mine = rows.filter((r) => r.claimed_by === me.id);
+  const free = rows.filter((r) => !r.claimed_by);
+  const taken = rows.filter((r) => r.claimed_by && r.claimed_by !== me.id);
+
+  const line = (r, kind) => html`<div class="row" key=${r.submission_id}>
+    <div style="flex:1;min-width:0">
+      <span style="font-size:14px">${r.assignment_title}</span>
+      <span class="muted" style="display:block">
+        ${r.anonymous_correction ? "Copie anonyme" : r.student_name} ·
+        rendu ${dateTimeFr(r.submitted_at)}${r.late ? " · en retard" : ""}
+        ${kind === "taken" ? ` · pris par ${r.claimed_by_name}` : ""}</span>
+    </div>
+    <div style="display:flex;gap:var(--s2);align-items:center;flex-shrink:0">
+      ${r.file_path && html`<button class="ghost tiny" onClick=${() => openFile(r.file_path)}>Lire</button>`}
+      ${kind === "free" && html`<button class="tiny" disabled=${busy === r.submission_id}
+        onClick=${() => claim(r.submission_id)}>Prendre en charge</button>`}
+      ${kind === "mine" && html`
+        <button class="ok tiny" onClick=${() => onGrade(r.assignment_id)}>Corriger</button>
+        <button class="ghost tiny" disabled=${busy === r.submission_id}
+          onClick=${() => release(r.submission_id)}>Rendre au groupe</button>`}
+      ${kind === "taken" && html`<span class="pill">prise</span>`}
+    </div>
+  </div>`;
+
+  if (rows.length === 0) return html`<div class="card">
+    <p class="eyebrow" style="margin-bottom:var(--s2)">À corriger</p>
+    <p class="muted">Aucune copie en attente. Tout est à jour.</p></div>`;
+
+  return html`
+    <div class="card">
+      <p class="eyebrow" style="margin-bottom:var(--s3)">
+        À corriger — ${free.length} libre${free.length > 1 ? "s" : ""},
+        ${mine.length} que tu as prise${mine.length > 1 ? "s" : ""}</p>
+      ${err && html`<p class="error" style="margin-bottom:var(--s3)">${err}</p>`}
+      ${mine.length > 0 && html`<p class="muted" style="margin-bottom:var(--s2)">Tes copies</p>`}
+      ${mine.map((r) => line(r, "mine"))}
+      ${free.length > 0 && html`<p class="muted" style="margin:var(--s3) 0 var(--s2)">Copies libres</p>`}
+      ${free.map((r) => line(r, "free"))}
+      ${taken.length > 0 && html`<p class="muted" style="margin:var(--s3) 0 var(--s2)">Prises par d'autres</p>`}
+      ${taken.map((r) => line(r, "taken"))}
     </div>`;
 }
 
@@ -1512,6 +1676,369 @@ function CarteEncadrant({ tutorId, tags }) {
 }
 
 /* ==================================================================
+   8octies. RENDEZ-VOUS
+   ================================================================== */
+const MODE_LABEL = { visio: "En visio", presentiel: "En présentiel" };
+
+function slotLabel(iso, minutes) {
+  const d = new Date(iso);
+  const jour = d.toLocaleDateString("fr-FR", { weekday:"long", day:"numeric", month:"long" });
+  const heure = d.toLocaleTimeString("fr-FR", { hour:"2-digit", minute:"2-digit" });
+  return `${jour} à ${heure}${minutes ? ` · ${minutes} min` : ""}`;
+}
+
+/* --- Bloc rendez-vous vu par l'élève ----------------------------- */
+function MesRdv({ me, compact }) {
+  const [rows, setRows] = useState([]);
+  const [slots, setSlots] = useState({});
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    const { data, error } = await db.from("meetings_view")
+      .select("*").eq("student_id", me.id)
+      .in("status", ["propose", "confirme"]).order("created_at", { ascending:false });
+    if (error) { setErr(error.message); return; }
+    setRows(data || []);
+    if ((data || []).length) {
+      const { data: sl } = await db.from("meeting_slots")
+        .select("*").in("meeting_id", data.map((m) => m.id)).order("starts_at");
+      const by = {};
+      (sl || []).forEach((s) => { (by[s.meeting_id] ||= []).push(s); });
+      setSlots(by);
+    }
+  }
+
+  async function pick(slotId, mode) {
+    setBusy(true); setErr("");
+    const { data, error } = await db.rpc("choose_slot", { slot: slotId, pick_mode: mode });
+    if (error) setErr(error.message);
+    else if (data === false) setErr("Ce rendez-vous n'est plus disponible.");
+    await load(); setBusy(false);
+  }
+
+  async function cancel(id) {
+    if (!confirm("Annuler ce rendez-vous ?")) return;
+    await db.rpc("cancel_meeting", { mid: id });
+    await load();
+  }
+
+  if (rows.length === 0) {
+    if (compact) return null;
+    return html`<div class="card">
+      <p class="eyebrow" style="margin-bottom:var(--s2)">Points avec ton encadrant</p>
+      <p class="muted">Aucun rendez-vous prévu. Ton encadrant t'en proposera un,
+        ou demande-lui directement dans la messagerie.</p></div>`;
+  }
+
+  return html`<div>
+    ${err && html`<p class="error" style="margin-bottom:var(--s3)">${err}</p>`}
+    ${rows.map((m) => {
+      const list = slots[m.id] || [];
+      const chosen = list.find((s) => s.chosen);
+      return html`<div class="card" key=${m.id}>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);flex-wrap:wrap">
+          <div>
+            <p class="eyebrow">${m.status === "confirme" ? "Rendez-vous confirmé" : "Proposition de rendez-vous"}</p>
+            <p style="font-size:16px;margin-top:var(--s1)">${m.subject || "Point de suivi"}</p>
+            <p class="muted">avec ${m.staff_name}</p>
+          </div>
+          <${Avatar} name=${m.staff_name} path=${m.staff_avatar} size=${40} />
+        </div>
+
+        ${m.note && html`<p class="muted" style="margin-top:var(--s3);white-space:pre-wrap">${m.note}</p>`}
+
+        ${m.status === "confirme"
+          ? html`<div style="margin-top:var(--s3)">
+              <div class="slot chosen">
+                <span>${chosen ? slotLabel(chosen.starts_at, chosen.minutes) : "Créneau à confirmer"}</span>
+                <span class="pill live">${MODE_LABEL[m.mode] || ""}</span>
+              </div>
+              ${m.location && html`<p class="muted" style="margin-top:var(--s2)">
+                ${m.mode === "visio" ? "Lien : " : "Lieu : "}
+                ${m.mode === "visio"
+                  ? html`<a href=${m.location} target="_blank" rel="noopener">${m.location}</a>`
+                  : m.location}</p>`}
+              <button class="ghost tiny" style="margin-top:var(--s3)" onClick=${() => cancel(m.id)}>
+                Annuler ce rendez-vous</button>
+            </div>`
+          : html`<div style="margin-top:var(--s3)">
+              <p class="muted" style="margin-bottom:var(--s2)">
+                Choisis le créneau et le format qui t'arrangent.</p>
+              ${list.map((s) => html`<div class="slot" key=${s.id}>
+                <span>${slotLabel(s.starts_at, s.minutes)}</span>
+                <span style="display:flex;gap:var(--s2)">
+                  ${(m.modes || []).map((md) => html`<button key=${md} class="ghost tiny" disabled=${busy}
+                    onClick=${() => pick(s.id, md)}>${MODE_LABEL[md]}</button>`)}
+                </span>
+              </div>`)}
+              ${list.length === 0 && html`<p class="muted">Aucun créneau proposé pour l'instant.</p>`}
+            </div>`}
+      </div>`;
+    })}
+  </div>`;
+}
+
+/* --- Proposition d'un rendez-vous par l'encadrant ---------------- */
+const EMPTY_RDV = { subject:"", note:"", location:"", modes:["visio","presentiel"], slots:["", "", ""] };
+
+function ProposerRdv({ me, student, onDone }) {
+  const [f, setF] = useState({ ...EMPTY_RDV, slots:["", "", ""] });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  async function send() {
+    const dates = f.slots.filter((s) => s);
+    if (dates.length === 0) { setErr("Propose au moins un créneau."); return; }
+    if (f.modes.length === 0) { setErr("Propose au moins un format."); return; }
+    setBusy(true); setErr("");
+
+    const { data: m, error } = await db.from("meetings").insert({
+      student_id: student.id, staff_id: me.id, proposed_by: me.id,
+      modes: f.modes, subject: f.subject.trim() || null,
+      note: f.note.trim() || null, location: f.location.trim() || null,
+    }).select().single();
+
+    if (error) { setErr(error.message); setBusy(false); return; }
+
+    const { error: e2 } = await db.from("meeting_slots").insert(
+      dates.map((d) => ({ meeting_id: m.id, starts_at: new Date(d).toISOString(), minutes: 45 })));
+    if (e2) setErr(e2.message);
+    else { setF({ ...EMPTY_RDV, slots:["", "", ""] }); onDone(); }
+    setBusy(false);
+  }
+
+  const toggleMode = (md) => setF({ ...f,
+    modes: f.modes.includes(md) ? f.modes.filter((x) => x !== md) : [...f.modes, md] });
+
+  return html`<div class="card">
+    <p class="eyebrow" style="margin-bottom:var(--s3)">Proposer un point à ${student.full_name}</p>
+    <div class="field"><label>Objet</label>
+      <input value=${f.subject} onInput=${(e)=>setF({...f,subject:e.target.value})}
+        placeholder="Point mensuel, retour sur la dissertation…" /></div>
+    <div class="field"><label>Formats proposés</label>
+      <div class="tags">
+        ${["visio","presentiel"].map((md) => html`<span key=${md}
+          class=${"tag" + (f.modes.includes(md) ? " on" : "")}
+          onClick=${() => toggleMode(md)}>${MODE_LABEL[md]}</span>`)}
+      </div></div>
+    <div class="field"><label>Créneaux proposés — l'élève en choisira un</label>
+      ${f.slots.map((s, i) => html`<input key=${i} type="datetime-local" value=${s}
+        style="margin-bottom:var(--s2)"
+        onInput=${(e) => { const n=[...f.slots]; n[i]=e.target.value; setF({...f,slots:n}); }} />`)}
+    </div>
+    <div class="field"><label>Lien visio ou adresse (facultatif)</label>
+      <input value=${f.location} onInput=${(e)=>setF({...f,location:e.target.value})} /></div>
+    <div class="field"><label>Message (facultatif)</label>
+      <textarea value=${f.note} onInput=${(e)=>setF({...f,note:e.target.value})}></textarea></div>
+    ${err && html`<p class="error" style="margin-bottom:var(--s3)">${err}</p>`}
+    <button disabled=${busy} onClick=${send}>Envoyer la proposition</button>
+  </div>`;
+}
+
+/* --- Bloc rendez-vous dans la fiche élève ------------------------ */
+function RdvFiche({ me, student }) {
+  const [rows, setRows] = useState([]);
+  const [slots, setSlots] = useState({});
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => { load(); }, [student.id]);
+
+  async function load() {
+    const { data } = await db.from("meetings_view")
+      .select("*").eq("student_id", student.id).order("created_at", { ascending:false });
+    setRows(data || []);
+    if ((data || []).length) {
+      const { data: sl } = await db.from("meeting_slots")
+        .select("*").in("meeting_id", data.map((m) => m.id)).order("starts_at");
+      const by = {};
+      (sl || []).forEach((s) => { (by[s.meeting_id] ||= []).push(s); });
+      setSlots(by);
+    }
+  }
+
+  const upcoming = rows.filter((m) => ["propose","confirme"].includes(m.status));
+  const past = rows.filter((m) => !["propose","confirme"].includes(m.status));
+
+  return html`<div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s3);margin-bottom:var(--s3)">
+        <p class="eyebrow">Points de suivi</p>
+        <button class="ghost tiny" onClick=${() => setOpen(!open)}>
+          ${open ? "Annuler" : "Proposer un point"}</button>
+      </div>
+      ${upcoming.length === 0 && html`<p class="muted">Aucun point prévu.</p>`}
+      ${upcoming.map((m) => {
+        const list = slots[m.id] || [];
+        const chosen = list.find((s) => s.chosen);
+        return html`<div class="row" key=${m.id}>
+          <div style="min-width:0">
+            <span style="font-size:14px">${m.subject || "Point de suivi"}</span>
+            <span class="muted" style="display:block">
+              ${m.status === "confirme"
+                ? `${chosen ? slotLabel(chosen.starts_at, chosen.minutes) : "créneau à venir"} · ${MODE_LABEL[m.mode] || ""}`
+                : `${list.length} créneau${list.length > 1 ? "x" : ""} proposé${list.length > 1 ? "s" : ""} — en attente de l'élève`}</span>
+          </div>
+          <span class=${"pill " + (m.status === "confirme" ? "live" : "wait")}>
+            ${m.status === "confirme" ? "confirmé" : "proposé"}</span>
+        </div>`;
+      })}
+      ${past.length > 0 && html`<p class="muted" style="margin-top:var(--s3)">
+        ${past.length} point${past.length > 1 ? "s" : ""} passé${past.length > 1 ? "s" : ""} ou annulé${past.length > 1 ? "s" : ""}.</p>`}
+    </div>
+    ${open && html`<${ProposerRdv} me=${me} student=${student}
+      onDone=${() => { setOpen(false); load(); }} />`}
+  </div>`;
+}
+
+/* ==================================================================
+   8nonies. TABLEAUX DE BORD
+   ================================================================== */
+function Stat({ value, label, warn }) {
+  return html`<div class=${"stat" + (warn ? " warn-stat" : "")}>
+    <b>${value}</b><span>${label}</span></div>`;
+}
+
+function BordEncadrant({ me, rows, onOpen }) {
+  const [s, setS] = useState(null);
+  const [follow, setFollow] = useState([]);
+  const [rdv, setRdv] = useState([]);
+
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    const { data } = await db.rpc("staff_stats");
+    setS(Array.isArray(data) ? data[0] : data);
+    const { data: f } = await db.from("follow_up").select("*").eq("tutor_id", me.id);
+    setFollow(f || []);
+    const { data: m } = await db.from("meetings_view")
+      .select("*").eq("staff_id", me.id).eq("status", "confirme").order("when_at");
+    setRdv((m || []).filter((x) => x.when_at && new Date(x.when_at) > Date.now()));
+  }
+
+  if (!s) return html`<p class="muted">Chargement du tableau de bord…</p>`;
+
+  const stale = follow.filter((f) => !f.last_seen ||
+    (Date.now() - new Date(f.last_seen)) / 86400000 > 14);
+  const noPoint = follow.filter((f) => !f.last_meeting ||
+    (Date.now() - new Date(f.last_meeting)) / 86400000 > 30);
+
+  return html`
+    <div>
+      <h1 style="font-size:26px">Mon tableau de bord</h1>
+      <p class="muted" style="margin-bottom:var(--s4)">L'essentiel de ton accompagnement.</p>
+
+      <div class="stats" style="margin-bottom:var(--s5)">
+        <${Stat} value=${s.my_students} label="élèves rattachés" />
+        <${Stat} value=${s.to_correct} label="copies libres à corriger" warn=${s.to_correct > 0} />
+        <${Stat} value=${s.claimed_by_me} label="copies que tu as prises" warn=${s.claimed_by_me > 0} />
+        <${Stat} value=${s.unread} label="messages non lus" warn=${s.unread > 0} />
+      </div>
+
+      <div class="card">
+        <p class="eyebrow" style="margin-bottom:var(--s3)">Prochains points</p>
+        ${rdv.length === 0 && html`<p class="muted">Aucun rendez-vous confirmé à venir.</p>`}
+        ${rdv.map((m) => html`<div class="row" key=${m.id}>
+          <div><span style="font-size:14px">${m.student_name}</span>
+            <span class="muted" style="display:block">
+              ${slotLabel(m.when_at, m.chosen_minutes)} · ${MODE_LABEL[m.mode] || ""}</span></div>
+          <button class="ghost tiny" onClick=${() => onOpen(m.student_id)}>Fiche</button>
+        </div>`)}
+      </div>
+
+      ${noPoint.length > 0 && html`<div class="card">
+        <p class="eyebrow" style="margin-bottom:var(--s2)">Sans point depuis plus d'un mois</p>
+        <p class="muted" style="margin-bottom:var(--s3)">
+          Un accompagnement qui s'espace est un accompagnement qui s'éteint.
+          Propose-leur un créneau depuis leur fiche.</p>
+        ${noPoint.map((f) => html`<div class="row" key=${f.student_id}>
+          <div><span style="font-size:14px">${f.full_name}</span>
+            <span class="muted" style="display:block">
+              ${f.last_meeting ? `dernier point le ${dateFr(f.last_meeting)}` : "aucun point à ce jour"}</span></div>
+          <button class="ghost tiny" onClick=${() => onOpen(f.student_id)}>Fiche</button>
+        </div>`)}
+      </div>`}
+
+      ${stale.length > 0 && html`<div class="card">
+        <p class="eyebrow" style="margin-bottom:var(--s2)">Ne se sont pas connectés depuis deux semaines</p>
+        ${stale.map((f) => html`<div class="row" key=${f.student_id}>
+          <div><span style="font-size:14px">${f.full_name}</span>
+            <span class="muted" style="display:block">
+              ${f.last_seen ? `vu le ${dateFr(f.last_seen)}` : "jamais connecté"}</span></div>
+          <button class="ghost tiny" onClick=${() => onOpen(f.student_id)}>Fiche</button>
+        </div>`)}
+      </div>`}
+    </div>`;
+}
+
+function BordAdmin({ onGo }) {
+  const [s, setS] = useState(null);
+  const [rdv, setRdv] = useState([]);
+
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    const { data } = await db.rpc("admin_stats");
+    setS(Array.isArray(data) ? data[0] : data);
+    const { data: m } = await db.from("meetings_view")
+      .select("*").eq("status", "confirme").order("when_at");
+    setRdv((m || []).filter((x) => x.when_at && new Date(x.when_at) > Date.now()).slice(0, 8));
+  }
+
+  if (!s) return html`<p class="muted">Chargement du tableau de bord…</p>`;
+
+  return html`
+    <div>
+      <h1 style="font-size:26px">Tableau de bord</h1>
+      <p class="muted" style="margin-bottom:var(--s4)">L'état de l'association, sur les sept derniers jours.</p>
+
+      <p class="eyebrow" style="margin-bottom:var(--s3)">Les gens</p>
+      <div class="stats" style="margin-bottom:var(--s5)">
+        <${Stat} value=${s.students_active} label="élèves actifs" />
+        <${Stat} value=${s.students_pending} label="inscriptions à valider" warn=${s.students_pending > 0} />
+        <${Stat} value=${s.staff_count} label="encadrants" />
+        <${Stat} value=${s.without_tutor} label="élèves sans encadrant" warn=${s.without_tutor > 0} />
+      </div>
+
+      <p class="eyebrow" style="margin-bottom:var(--s3)">L'activité de la semaine</p>
+      <div class="stats" style="margin-bottom:var(--s5)">
+        <${Stat} value=${s.active_week} label="élèves venus" />
+        <${Stat} value=${s.lessons_week} label="leçons validées" />
+        <${Stat} value=${s.messages_week} label="messages échangés" />
+        <${Stat} value=${s.submissions_week} label="devoirs rendus" />
+      </div>
+
+      <p class="eyebrow" style="margin-bottom:var(--s3)">Le travail en attente</p>
+      <div class="stats" style="margin-bottom:var(--s5)">
+        <${Stat} value=${s.awaiting_grading} label="copies non corrigées" warn=${s.awaiting_grading > 0} />
+        <${Stat} value=${Number(s.hours_committed || 0)} label="heures/semaine engagées ce mois" />
+      </div>
+
+      <div class="card">
+        <p class="eyebrow" style="margin-bottom:var(--s3)">Prochains rendez-vous de l'équipe</p>
+        ${rdv.length === 0 && html`<p class="muted">Aucun rendez-vous confirmé à venir.</p>`}
+        ${rdv.map((m) => html`<div class="row" key=${m.id}>
+          <div><span style="font-size:14px">${m.student_name} · ${m.staff_name}</span>
+            <span class="muted" style="display:block">
+              ${slotLabel(m.when_at, m.chosen_minutes)} · ${MODE_LABEL[m.mode] || ""}</span></div>
+        </div>`)}
+      </div>
+
+      ${(s.students_pending > 0 || s.without_tutor > 0) && html`<div class="card">
+        <p class="eyebrow" style="margin-bottom:var(--s3)">À faire</p>
+        ${s.students_pending > 0 && html`<div class="row">
+          <span style="font-size:14px">${s.students_pending} inscription${s.students_pending > 1 ? "s" : ""} en attente</span>
+          <button class="ghost tiny" onClick=${() => onGo("validation")}>Valider</button></div>`}
+        ${s.without_tutor > 0 && html`<div class="row">
+          <span style="font-size:14px">${s.without_tutor} élève${s.without_tutor > 1 ? "s" : ""} sans encadrant</span>
+          <button class="ghost tiny" onClick=${() => onGo("eleves")}>Rattacher</button></div>`}
+      </div>`}
+    </div>`;
+}
+
+/* ==================================================================
    9. LISTE DES ÉLÈVES ET FICHE INDIVIDUELLE
    ================================================================== */
 function Eleves({ me, rows, totalLessons, onOpen, title, subtitle }) {
@@ -1619,6 +2146,8 @@ function Fiche({ me, studentId, courses, tutors, onBack, reload }) {
                 <div class="track dark"><i style=${`width:${pct}%`}></i></div></div>`;
             })}
           </div>
+
+          <${RdvFiche} me=${me} student=${p} />
 
           <${BadgesFiche} me=${me} studentId=${studentId} />
 
@@ -2073,13 +2602,14 @@ function App() {
   const unreadTotal = rows.reduce((n,r) => n + (r.unread||0), 0);
 
   const tabs = shown === "admin"
-    ? [["cours","Cours"], ["gestion","Gestion"], ["devoirs","Devoirs"], ["eleves","Élèves"],
-       ["equipe","Équipe"],
+    ? [["bord","Tableau de bord"], ["cours","Cours"], ["gestion","Gestion"], ["devoirs","Devoirs"],
+       ["eleves","Élèves"], ["equipe","Équipe"],
        ["validation", pendingCount ? `Validation (${pendingCount})` : "Validation"],
        ["forum","Forum"], ["messages", unreadTotal ? `Messages (${unreadTotal})` : "Messages"],
        ["profil","Mon profil"]]
     : shown === "encadrant"
-      ? [["cours","Cours"], ["devoirs","Devoirs"], ["eleves","Mes élèves"], ["forum","Forum"],
+      ? [["bord","Tableau de bord"], ["cours","Cours"], ["devoirs","Devoirs"],
+         ["eleves","Mes élèves"], ["forum","Forum"],
          ["messages", unreadTotal ? `Messages (${unreadTotal})` : "Messages"], ["profil","Mon profil"]]
       : [["cours","Mes cours"], ["devoirs","Devoirs"], ["badges","Badges"],
          ["forum","Forum"], ["messages","Mon encadrant"]];
@@ -2122,12 +2652,17 @@ function App() {
             streak=${streak} fresh=${fresh}
             onBadges=${() => { setFresh(0); setView({ page:"badges" }); }}
             onOpen=${(id) => setView({ page:"cours", id })} />`
+        : view.page === "bord"
+          ? (shown === "admin"
+              ? html`<${BordAdmin} onGo=${(p) => setView({ page:p })} />`
+              : html`<${BordEncadrant} me=${me} rows=${rows}
+                       onOpen=${(id) => setView({ page:"eleves", student:id })} />`)
         : view.page === "profil" ? html`<${Profil} me=${me} reload=${load} />`
         : view.page === "equipe" ? html`<${Equipe} tags=${tags} onSetRole=${setRole} />`
         : view.page === "gestion" ? html`<${Gestion} courses=${courses} reload=${load} />`
         : view.page === "devoirs"
           ? (staff
-              ? html`<${DevoirsAdmin} me=${me} courses=${courses} reload=${load} />`
+              ? html`<${DevoirsAdmin} me=${me} courses=${courses} tags=${tags} reload=${load} />`
               : html`<${Devoirs} me=${me} reload=${load} />`)
         : view.page === "validation" ? html`<${Validation} reload=${load}
             onOpen=${(id) => setView({ page:"eleves", student:id })} />`
