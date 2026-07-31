@@ -163,6 +163,20 @@ tr:last-child td{border-bottom:none}
 .bars > div.soft{background:var(--gray-soft)}
 .axis{display:flex;justify-content:space-between;font-size:11px;color:var(--gray-soft);margin-top:var(--s2)}
 /* --- Fenêtre modale --- */
+.pubnav{display:flex;gap:var(--s1);flex-wrap:wrap;flex:1;justify-content:center}
+.pubnav button{background:none;color:#CBD5E1;padding:5px var(--s3);font-size:14px;white-space:nowrap}
+.pubnav button:hover:not(:disabled){color:var(--white);background:var(--ink-soft)}
+.pubnav button.on{background:#334155;color:var(--white)}
+.burger{display:none;background:none;color:#CBD5E1;padding:4px var(--s2);font-size:18px}
+.pubdrawer{display:none;flex-direction:column;padding-bottom:var(--s3)}
+.pubdrawer button{background:none;color:#CBD5E1;text-align:left;padding:var(--s2) var(--s4);font-size:14px}
+.pubdrawer button.on{color:var(--white)}
+@media(max-width:820px){
+  .pubnav{display:none}
+  .burger{display:block}
+  .pubdrawer{display:flex}
+}
+.hero{border-bottom:1px solid var(--line);background:var(--white)}
 .veil{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:80;display:flex;
   align-items:center;justify-content:center;padding:var(--s4)}
 .modal{background:var(--white);border-radius:12px;width:100%;max-width:520px;
@@ -305,45 +319,216 @@ const monthLabel = (iso) =>
    3. VITRINE PUBLIQUE
    ================================================================== */
 function Vitrine({ onEnter }) {
+  const [page, setPage] = useState("accueil");
+  const [c, setC] = useState({});
+  const [team, setTeam] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [tags, setTags] = useState([]);
+  const [menu, setMenu] = useState(false);
+
+  useEffect(() => { load(); }, []);
+  useEffect(() => { window.scrollTo(0, 0); setMenu(false); }, [page]);
+
+  async function load() {
+    const { data } = await db.from("site_content").select("key, value");
+    setC(Object.fromEntries((data || []).map((x) => [x.key, x.value || ""])));
+    const { data: t } = await db.from("public_team").select("*");
+    setTeam(t || []);
+    const { data: st } = await db.rpc("public_stats");
+    setStats(Array.isArray(st) ? st[0] : st);
+    const { data: tg } = await db.from("subject_tags").select("*").order("position");
+    setTags(tg || []);
+  }
+
+  const PAGES = [
+    ["accueil", "Accueil"], ["association", "L'association"], ["equipe", "L'équipe"],
+    ["chiffres", "Nos chiffres"], ["adherer", "Nous rejoindre"], ["contact", "Contact"],
+  ];
+  const label = (code) => tags.find((t) => t.code === code)?.label || code;
+  const lignes = (txt) => (txt || "").split("\n").map((l) => l.trim()).filter(Boolean);
+
+  const accueil = html`<div>
+    <div class="hero">
+      <div class="wrap" style="max-width:760px;padding-top:var(--s6);padding-bottom:var(--s6)">
+        <p class="eyebrow">Association loi 1901</p>
+        <h1 style="font-size:clamp(28px,5vw,42px);margin:var(--s2) 0 var(--s4)">
+          ${c.hero_titre || "Préparer le concours commun des IEP"}</h1>
+        <p style="font-size:17px;color:var(--gray);margin-bottom:var(--s5);white-space:pre-wrap">
+          ${c.hero_texte || ""}</p>
+        <div style="display:flex;gap:var(--s3);flex-wrap:wrap">
+          <button style="font-size:15px;padding:12px var(--s5)" onClick=${onEnter}>
+            ${c.hero_bouton || "Rejoindre la préparation"}</button>
+          <button class="ghost" style="font-size:15px;padding:12px var(--s5)"
+            onClick=${() => setPage("association")}>Découvrir l'association</button>
+        </div>
+      </div>
+    </div>
+
+    ${stats && html`<div class="wrap" style="padding-bottom:var(--s6)">
+      <div class="stats">
+        <${Stat} value=${stats.eleves} label="élèves accompagnés" />
+        <${Stat} value=${stats.encadrants} label="encadrants bénévoles" />
+        <${Stat} value=${stats.cours} label="cours en ligne" />
+        <${Stat} value=${stats.lecons} label="leçons disponibles" />
+      </div>
+    </div>`}
+
+    <div class="wrap" style="padding-bottom:var(--s6)"><div class="grid2">
+      <div class="card">
+        <h3 style="font-size:19px;margin-bottom:var(--s2)">Des cours structurés</h3>
+        <p class="muted">Chaque thème est découpé en leçons courtes — vidéo, fiche,
+          podcast, quiz — que tu suis à ton rythme, dans l'ordre.</p></div>
+      <div class="card">
+        <h3 style="font-size:19px;margin-bottom:var(--s2)">Un encadrant pour toi</h3>
+        <p class="muted">Un bénévole suit ta progression, corrige tes dissertations
+          et répond à tes questions tout au long de l'année.</p></div>
+    </div></div>
+  </div>`;
+
+  const association = html`<div class="wrap" style="max-width:740px;padding:var(--s6) var(--s4)">
+    <p class="eyebrow">L'association</p>
+    <h1 style="font-size:32px;margin:var(--s2) 0 var(--s4)">${c.asso_titre || "Qui sommes-nous"}</h1>
+    <p style="font-size:16px;white-space:pre-wrap;margin-bottom:var(--s5)">${c.asso_texte || ""}</p>
+
+    ${c.asso_mission && html`<div class="card" style="margin-bottom:var(--s4)">
+      <p class="eyebrow" style="margin-bottom:var(--s2)">Notre mission</p>
+      <p style="white-space:pre-wrap">${c.asso_mission}</p></div>`}
+
+    ${lignes(c.asso_valeurs).length > 0 && html`<div>
+      <p class="eyebrow" style="margin-bottom:var(--s3)">Nos principes</p>
+      <div class="grid2">
+        ${lignes(c.asso_valeurs).map((v, i) => html`<div class="card" key=${i}>
+          <p style="font-family:var(--serif);font-size:17px">${v}</p></div>`)}
+      </div></div>`}
+  </div>`;
+
+  const equipe = html`<div class="wrap" style="padding:var(--s6) var(--s4)">
+    <p class="eyebrow">L'équipe</p>
+    <h1 style="font-size:32px;margin:var(--s2) 0 var(--s3)">Les encadrants</h1>
+    <p class="muted" style="margin-bottom:var(--s5);max-width:640px;white-space:pre-wrap">
+      ${c.equipe_texte || ""}</p>
+    ${team.length === 0
+      ? html`<div class="card"><p class="muted">
+          La présentation de l'équipe arrive bientôt. Les encadrants choisissent
+          eux-mêmes d'y figurer.</p></div>`
+      : html`<div class="cards">
+          ${team.map((t) => html`<div class="card" key=${t.id}>
+            <div style="display:flex;gap:var(--s3);align-items:center;margin-bottom:var(--s3)">
+              <${Avatar} name=${t.full_name} path=${t.avatar_path} size=${52} />
+              <div style="min-width:0">
+                <p style="font-size:16px">${t.full_name}</p>
+                ${t.grade_name && html`<p class="muted">${t.grade_name}</p>`}
+              </div>
+            </div>
+            ${t.bio && html`<p class="muted" style="white-space:pre-wrap">${t.bio}</p>`}
+            ${(t.subjects || []).length > 0 && html`<div class="tags" style="margin-top:var(--s3)">
+              ${t.subjects.map((sj) => html`<span key=${sj} class="tag">${label(sj)}</span>`)}
+            </div>`}
+          </div>`)}
+        </div>`}
+  </div>`;
+
+  const chiffres = html`<div class="wrap" style="padding:var(--s6) var(--s4)">
+    <p class="eyebrow">Nos chiffres</p>
+    <h1 style="font-size:32px;margin:var(--s2) 0 var(--s3)">L'association en quelques nombres</h1>
+    <p class="muted" style="margin-bottom:var(--s5);white-space:pre-wrap">${c.chiffres_texte || ""}</p>
+    ${stats && html`<div class="stats">
+      <${Stat} value=${stats.eleves} label="élèves accompagnés" />
+      <${Stat} value=${stats.encadrants} label="encadrants bénévoles" />
+      <${Stat} value=${stats.cours} label="cours publiés" />
+      <${Stat} value=${stats.lecons} label="leçons disponibles" />
+      <${Stat} value=${stats.devoirs_rendus} label="devoirs rendus" />
+      <${Stat} value=${Number(stats.heures_semaine || 0)} label="heures/semaine de bénévolat" />
+    </div>`}
+  </div>`;
+
+  const adherer = html`<div class="wrap" style="max-width:740px;padding:var(--s6) var(--s4)">
+    <p class="eyebrow">Nous rejoindre</p>
+    <h1 style="font-size:32px;margin:var(--s2) 0 var(--s4)">${c.adherer_titre || "Nous rejoindre"}</h1>
+
+    <div class="card">
+      <h3 style="font-size:19px;margin-bottom:var(--s2)">Tu es lycéen</h3>
+      <p class="muted" style="white-space:pre-wrap;margin-bottom:var(--s3)">${c.adherer_texte || ""}</p>
+      ${ASSO.cotisation && html`<p class="muted" style="margin-bottom:var(--s3)">
+        Cotisation annuelle : ${ASSO.cotisation}.</p>`}
+      <div style="display:flex;gap:var(--s2);flex-wrap:wrap">
+        ${ASSO.adhesionUrl && html`<a href=${ASSO.adhesionUrl} target="_blank" rel="noopener">
+          <button>Adhérer en ligne</button></a>`}
+        <button class=${ASSO.adhesionUrl ? "ghost" : ""} onClick=${onEnter}>Créer mon compte</button>
+      </div>
+      ${!ASSO.adhesionUrl && html`<p class="todo" style="margin-top:var(--s3)">
+        Lien d'adhésion HelloAsso à renseigner dans les réglages du fichier.</p>`}
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:19px;margin-bottom:var(--s2)">Tu veux devenir encadrant</h3>
+      <p class="muted" style="white-space:pre-wrap">${c.adherer_benevole || ""}</p>
+      ${ASSO.contactEmail && html`<p style="margin-top:var(--s3)">
+        <a href=${`mailto:${ASSO.contactEmail}`}>${ASSO.contactEmail}</a></p>`}
+    </div>
+  </div>`;
+
+  const contact = html`<div class="wrap" style="max-width:640px;padding:var(--s6) var(--s4)">
+    <p class="eyebrow">Contact</p>
+    <h1 style="font-size:32px;margin:var(--s2) 0 var(--s4)">Nous écrire</h1>
+    <p class="muted" style="white-space:pre-wrap;margin-bottom:var(--s4)">${c.contact_texte || ""}</p>
+    <div class="card">
+      <dl class="dl">
+        ${c.legal_nom && html`<dt>Association</dt><dd>${c.legal_nom}</dd>`}
+        ${ASSO.contactEmail && html`<dt>E-mail</dt>
+          <dd><a href=${`mailto:${ASSO.contactEmail}`}>${ASSO.contactEmail}</a></dd>`}
+        ${c.legal_siege && html`<dt>Siège</dt><dd>${c.legal_siege}</dd>`}
+        ${c.legal_rna && html`<dt>RNA</dt><dd>${c.legal_rna}</dd>`}
+      </dl>
+      ${!ASSO.contactEmail && html`<p class="todo" style="margin-top:var(--s3)">
+        Adresse de contact à renseigner dans les réglages du fichier.</p>`}
+    </div>
+  </div>`;
+
+  const legal = (which) => html`<div class="wrap" style="max-width:740px;padding:var(--s6) var(--s4)">
+    <button class="plain" onClick=${() => setPage("accueil")}>← Retour au site</button>
+    <h1 style="font-size:28px;margin:var(--s3) 0 var(--s4)">
+      ${which === "mentions" ? "Mentions légales" : "Politique de confidentialité"}</h1>
+    ${(which === "mentions" ? c.legal_mentions : c.legal_confidentialite)
+      ? html`<p style="white-space:pre-wrap">${which === "mentions" ? c.legal_mentions : c.legal_confidentialite}</p>`
+      : html`<p class="todo">Ce document n'a pas encore été rédigé. Le bureau peut le
+          saisir depuis l'onglet Vitrine de son espace.</p>`}
+  </div>`;
+
+  const body = { accueil, association, equipe, chiffres, adherer, contact }[page]
+    || legal(page === "mentions" ? "mentions" : "confidentialite");
+
   return html`
     <div>
       <div class="topbar"><div class="wrap">
-        <span class="brand">${ASSO.nom}</span>
-        <button onClick=${onEnter}>Accéder à mon espace</button>
-      </div></div>
-
-      <div class="wrap" style="padding:var(--s6) var(--s4);max-width:740px">
-        <p class="eyebrow">Association loi 1901</p>
-        <h1 style="font-size:38px;margin:var(--s2) 0 var(--s4)">
-          Préparer le concours commun des IEP,<br/>sans payer une prépa privée.</h1>
-        <p style="font-size:17px;color:var(--gray);margin-bottom:var(--s5)">
-          Nous accompagnons les lycéens vers le concours commun des Instituts
-          d'études politiques. Cours en ligne, suivi individuel par un encadrant
-          bénévole, et une communauté d'élèves qui avancent ensemble.</p>
-        <button onClick=${onEnter} style="font-size:15px;padding:12px var(--s5)">
-          Rejoindre la préparation</button>
-        ${ASSO.cotisation && html`<p class="muted" style="margin-top:var(--s3)">
-          L'accès à la plateforme est réservé aux adhérents — cotisation ${ASSO.cotisation} par an.</p>`}
+        <button class="brand" style="background:none;padding:0;color:var(--white)"
+          onClick=${() => setPage("accueil")}>${c.legal_nom || ASSO.nom}</button>
+        <div class="pubnav">
+          ${PAGES.map(([k, l]) => html`<button key=${k} class=${page === k ? "on" : ""}
+            onClick=${() => setPage(k)}>${l}</button>`)}
+        </div>
+        <div style="display:flex;gap:var(--s2);align-items:center">
+          <button class="burger" onClick=${() => setMenu(!menu)} aria-label="Menu">☰</button>
+          <button onClick=${onEnter}>Mon espace</button>
+        </div>
+      </div>
+      ${menu && html`<div class="wrap pubdrawer">
+        ${PAGES.map(([k, l]) => html`<button key=${k} class=${page === k ? "on" : ""}
+          onClick=${() => setPage(k)}>${l}</button>`)}
+      </div>`}
       </div>
 
-      <div class="wrap" style="padding-bottom:var(--s6)"><div class="grid2">
-        <div class="card">
-          <h3 style="font-size:19px;margin-bottom:var(--s2)">Des cours structurés</h3>
-          <p class="muted">Chaque thème est découpé en leçons courtes — vidéo, fiche,
-            podcast, quiz — que tu suis à ton rythme, dans l'ordre.</p></div>
-        <div class="card">
-          <h3 style="font-size:19px;margin-bottom:var(--s2)">Un encadrant pour toi</h3>
-          <p class="muted">Un bénévole suit ta progression, corrige tes dissertations
-            et répond à tes questions tout au long de l'année.</p></div>
-      </div></div>
+      ${body}
 
-      <div style="border-top:1px solid var(--line);padding:var(--s4) 0"><div class="wrap">
-        <p class="muted">${ASSO.nom} — association à but non lucratif</p>
-        <p class="muted" style="margin-top:var(--s2)">
-          ${ASSO.mentionsUrl ? html`<a href=${ASSO.mentionsUrl}>Mentions légales</a> · ` : ""}
-          ${ASSO.confidentUrl ? html`<a href=${ASSO.confidentUrl}>Politique de confidentialité</a>` : ""}
-        </p>
-      </div></div>
+      <div style="border-top:1px solid var(--line);padding:var(--s5) 0;margin-top:var(--s6)">
+        <div class="wrap">
+          <p class="muted">${c.legal_nom || ASSO.nom} — association à but non lucratif</p>
+          <p class="muted" style="margin-top:var(--s2);display:flex;gap:var(--s3);flex-wrap:wrap">
+            <button class="plain" onClick=${() => setPage("mentions")}>Mentions légales</button>
+            <button class="plain" onClick=${() => setPage("confidentialite")}>Politique de confidentialité</button>
+          </p>
+        </div>
+      </div>
     </div>`;
 }
 
@@ -1530,7 +1715,7 @@ function Profil({ me, reload }) {
 
   async function load() {
     const { data: p } = await db.from("profiles")
-      .select("full_name, bio, bio_correction, correct_anonymously, subjects, avatar_path")
+      .select("full_name, bio, bio_correction, correct_anonymously, subjects, avatar_path, show_publicly")
       .eq("id", me.id).single();
     setF({ ...p, subjects: p?.subjects || [] });
     const { data: t } = await db.from("subject_tags").select("*").order("position");
@@ -1565,6 +1750,7 @@ function Profil({ me, reload }) {
       bio: f.bio?.trim() || null,
       bio_correction: f.bio_correction?.trim() || null,
       correct_anonymously: !!f.correct_anonymously,
+      show_publicly: !!f.show_publicly,
       subjects: f.subjects,
     }).eq("id", me.id);
     if (error) setErr(error.message);
@@ -1627,6 +1813,14 @@ function Profil({ me, reload }) {
             onChange=${(e) => setF({ ...f, correct_anonymously:e.target.checked })} />
           <span>Corriger sous anonymat. Les élèves verront « un correcteur de l'équipe »
             au lieu de ton nom. Le bureau, lui, sait toujours qui a corrigé.</span>
+        </label>
+
+        <label class="check" style="margin-bottom:var(--s3)">
+          <input type="checkbox" checked=${!!f.show_publicly}
+            onChange=${(e) => setF({ ...f, show_publicly:e.target.checked })} />
+          <span>Figurer sur la page « L'équipe » du site public, avec ma photo, ma
+            présentation et mes matières. Visible par n'importe quel visiteur, y compris
+            hors de l'association. Décoché par défaut.</span>
         </label>
 
         <div class="field">
@@ -2899,6 +3093,82 @@ function Signalements({ team }) {
 }
 
 /* ==================================================================
+   10bis. CONTENU DE LA VITRINE
+   ================================================================== */
+const SECTIONS = [
+  ["accueil", "Page d'accueil"], ["association", "L'association"], ["equipe", "L'équipe"],
+  ["chiffres", "Nos chiffres"], ["adherer", "Nous rejoindre"], ["contact", "Contact"],
+  ["legal", "Identité et documents légaux"],
+];
+
+function ContenuVitrine() {
+  const [rows, setRows] = useState([]);
+  const [draft, setDraft] = useState({});
+  const [sec, setSec] = useState("accueil");
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    const { data, error } = await db.from("site_content").select("*").order("position");
+    if (error) setErr(error.message);
+    else { setRows(data || []); setDraft(Object.fromEntries((data || []).map((r) => [r.key, r.value || ""]))); }
+  }
+
+  async function save(key) {
+    setMsg(""); setErr("");
+    const { error } = await db.from("site_content").update({ value: draft[key] }).eq("key", key);
+    if (error) setErr(error.message); else { setMsg("Enregistré."); setTimeout(() => setMsg(""), 2000); }
+  }
+
+  async function saveAll() {
+    setMsg(""); setErr("");
+    for (const r of rows.filter((x) => x.section === sec)) {
+      if ((r.value || "") !== (draft[r.key] || "")) {
+        const { error } = await db.from("site_content").update({ value: draft[r.key] }).eq("key", r.key);
+        if (error) { setErr(error.message); return; }
+      }
+    }
+    await load(); setMsg("Section enregistrée."); setTimeout(() => setMsg(""), 2500);
+  }
+
+  const champs = rows.filter((r) => r.section === sec);
+
+  return html`
+    <div>
+      <h1 style="font-size:26px">Contenu du site public</h1>
+      <p class="muted" style="margin-bottom:var(--s4)">
+        Ce que voient les visiteurs non connectés. Modifiable ici, sans toucher au code.</p>
+      ${err && html`<p class="error" style="margin-bottom:var(--s3)">${err}</p>`}
+      ${msg && html`<p class="notice" style="margin-bottom:var(--s3)">${msg}</p>`}
+
+      <div class="tags" style="margin-bottom:var(--s4)">
+        ${SECTIONS.map(([k, l]) => html`<span key=${k} class=${"tag" + (sec === k ? " on" : "")}
+          onClick=${() => setSec(k)}>${l}</span>`)}
+      </div>
+
+      ${sec === "legal" && html`<p class="warn" style="margin-bottom:var(--s4)">
+        Ces quatre premiers champs identifient juridiquement l'association et alimentent
+        les mentions légales, la politique de confidentialité et le formulaire parental.
+        Tant qu'ils sont vides, tu ne peux pas légalement inscrire un mineur.</p>`}
+
+      <div class="card">
+        ${champs.map((r) => html`<div class="field" key=${r.key}>
+          <label>${r.label}</label>
+          ${r.kind === "longtext"
+            ? html`<textarea style="min-height:${r.section === "legal" ? "220px" : "90px"}"
+                value=${draft[r.key] || ""}
+                onInput=${(e) => setDraft({ ...draft, [r.key]: e.target.value })}></textarea>`
+            : html`<input value=${draft[r.key] || ""}
+                onInput=${(e) => setDraft({ ...draft, [r.key]: e.target.value })} />`}
+        </div>`)}
+        <button onClick=${saveAll}>Enregistrer cette section</button>
+      </div>
+    </div>`;
+}
+
+/* ==================================================================
    11. BACK-OFFICE DES COURS
    ================================================================== */
 const EMPTY_LESSON = { title:"", type:"video", content_url:"", body:"", duration_min:"", xp:50 };
@@ -3196,7 +3466,7 @@ function App() {
 
   const tabs = shown === "admin"
     ? [["bord","Tableau de bord"], ["cours","Cours"], ["gestion","Gestion"], ["devoirs","Devoirs"],
-       ["eleves","Élèves"], ["equipe","Équipe"],
+       ["eleves","Élèves"], ["equipe","Équipe"], ["vitrine","Vitrine"],
        ["validation", pendingCount ? `Validation (${pendingCount})` : "Validation"],
        ["forum","Forum"], ["messages", unreadTotal ? `Messages (${unreadTotal})` : "Messages"]]
     : shown === "encadrant"
@@ -3245,6 +3515,7 @@ function App() {
                        onReport=${() => setReport(true)} />`
               : html`<${BordEncadrant} me=${me} rows=${rows} onReport=${() => setReport(true)}
                        onOpen=${(id) => setView({ page:"eleves", student:id })} />`)
+        : view.page === "vitrine" ? html`<${ContenuVitrine} />`
         : view.page === "compte" ? html`<${MonCompte} me=${me} reload=${load} />`
         : view.page === "rappel" ? html`<${Rappel} me=${me} rows=${rows}
             onOpen=${(id) => setView({ page:"eleves", student:id })} />`
