@@ -90,6 +90,19 @@ tr:last-child td{border-bottom:none}
 .dl dt{color:var(--gray);font-size:13px}
 .check{display:flex;gap:var(--s2);align-items:flex-start;font-size:13px;color:var(--ink);line-height:1.45}
 .check input{width:auto;margin-top:3px;flex:0 0 auto}
+.badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:var(--s3)}
+.badge{border:1px solid var(--line);border-radius:var(--radius);padding:var(--s3);background:var(--white);text-align:center}
+.badge.locked{background:var(--paper);border-style:dashed}
+.medal{width:46px;height:46px;border-radius:50%;margin:0 auto var(--s2);display:flex;align-items:center;
+  justify-content:center;font-family:var(--serif);font-size:16px;border:2px solid}
+.medal.bronze{border-color:#B45309;color:#B45309;background:#FFFBEB}
+.medal.argent{border-color:#64748B;color:#475569;background:#F8FAFC}
+.medal.or{border-color:#F59E0B;color:#92400E;background:#FEF3C7}
+.badge.locked .medal{border-color:var(--line);color:var(--gray-soft);background:var(--white)}
+.badge.locked .bname{color:var(--gray)}
+.bname{font-size:14px;margin-bottom:var(--s1)}
+.flame{display:inline-flex;align-items:baseline;gap:var(--s2);padding:var(--s2) var(--s3);
+  border-radius:var(--radius);background:#FFFBEB;border:1px solid #FDE68A;color:#78350F;font-size:13px}
 </style>
 </head>
 
@@ -444,17 +457,27 @@ function EnAttente({ me, details, reload }) {
 /* ==================================================================
    6. ESPACE ÉLÈVE
    ================================================================== */
-function MesCours({ me, courses, done, xp, onOpen }) {
+function MesCours({ me, courses, done, xp, streak, fresh, onOpen, onBadges }) {
   const lvl = levelOf(xp), into = xp % XP_PER_LEVEL;
   return html`
     <div>
       <h1 style="font-size:26px">Bonjour ${me.full_name.split(" ")[0]}</h1>
       <p class="muted" style="margin-bottom:var(--s4)">Reprends où tu t'es arrêté.</p>
 
+      ${fresh > 0 && html`<div class="notice" style="margin-bottom:var(--s4)">
+        Tu viens de débloquer ${fresh} nouveau${fresh > 1 ? "x" : ""} badge${fresh > 1 ? "s" : ""}.
+        <button class="plain" style="color:#065F46;text-decoration:underline" onClick=${onBadges}>
+          Aller les voir</button></div>`}
+
       <div class="card" style="margin-bottom:var(--s5)">
-        <div style="display:flex;align-items:baseline;gap:var(--s3);margin-bottom:var(--s3)">
-          <span style="font-family:var(--serif);font-size:30px">${xp}</span>
-          <span class="muted">XP · niveau ${lvl}</span></div>
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:var(--s3);flex-wrap:wrap;margin-bottom:var(--s3)">
+          <div style="display:flex;align-items:baseline;gap:var(--s3)">
+            <span style="font-family:var(--serif);font-size:30px">${xp}</span>
+            <span class="muted">XP · niveau ${lvl}</span></div>
+          ${streak > 0 && html`<span class="flame">
+            <span style="font-family:var(--serif);font-size:18px">${streak}</span>
+            <span>jour${streak > 1 ? "s" : ""} d'affilée</span></span>`}
+        </div>
         <div class="track"><i style=${`width:${(into/XP_PER_LEVEL)*100}%`}></i></div>
         <p class="muted" style="margin-top:var(--s2)">${XP_PER_LEVEL-into} XP avant le niveau ${lvl+1}</p>
       </div>
@@ -1054,6 +1077,147 @@ function DevoirsAdmin({ me, courses, reload }) {
 }
 
 /* ==================================================================
+   8quater. BADGES ET MISSIONS
+   ================================================================== */
+const RULE_LABEL = {
+  lessons:     (v) => `${v} leçon${v > 1 ? "s" : ""} validée${v > 1 ? "s" : ""}`,
+  assignments: (v) => `${v} devoir${v > 1 ? "s" : ""} rendu${v > 1 ? "s" : ""}`,
+  streak:      (v) => `${v} jours d'affilée`,
+  forum:       (v) => `${v} messages sur le forum`,
+  xp:          (v) => `${v} XP au total`,
+  grade:       (v) => `une note d'au moins ${Math.round(v * 20)}/20`,
+};
+
+function Medal({ badge, locked }) {
+  return html`<div class=${"medal " + (locked ? "" : badge.tier)}>${badge.monogram}</div>`;
+}
+
+function Badges({ me }) {
+  const [all, setAll] = useState([]);
+  const [mine, setMine] = useState({});
+  const [prog, setProg] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    setLoading(true);
+    const { data: b } = await db.from("badges").select("*").order("position");
+    setAll(b || []);
+    const { data: u } = await db.from("user_badges")
+      .select("badge_id, awarded_at, note, profiles!user_badges_awarded_by_fkey(full_name)")
+      .eq("user_id", me.id);
+    setMine(Object.fromEntries((u || []).map((x) => [x.badge_id, x])));
+    const { data: p } = await db.rpc("my_progress");
+    setProg(Object.fromEntries((p || []).map((x) => [x.rule_type, Number(x.current_value)])));
+    setLoading(false);
+  }
+
+  if (loading) return html`<p class="muted">Chargement des badges…</p>`;
+
+  const won = all.filter((b) => mine[b.id]);
+  const autoLeft = all.filter((b) => !mine[b.id] && b.kind === "auto");
+  const manualLeft = all.filter((b) => !mine[b.id] && b.kind === "manuel");
+
+  const card = (b, locked) => {
+    const got = mine[b.id];
+    const cur = b.rule_type ? (prog[b.rule_type] ?? 0) : null;
+    const goal = b.rule_value !== null ? Number(b.rule_value) : null;
+    return html`<div class=${"badge" + (locked ? " locked" : "")} key=${b.id} title=${b.description}>
+      <${Medal} badge=${b} locked=${locked} />
+      <p class="bname">${b.name}</p>
+      <p class="muted" style="font-size:12px">${b.description}</p>
+      ${!locked && got && html`<p class="muted" style="font-size:12px;margin-top:var(--s2);color:var(--ok)">
+        Obtenu le ${dateFr(got.awarded_at)}
+        ${got.profiles?.full_name ? ` par ${got.profiles.full_name}` : ""}</p>`}
+      ${!locked && got?.note && html`<p class="muted" style="font-size:12px;font-style:italic">« ${got.note} »</p>`}
+      ${locked && goal !== null && b.rule_type && html`
+        <div style="margin-top:var(--s2)">
+          <div class="track dark"><i style=${`width:${Math.min(100, (cur / goal) * 100)}%`}></i></div>
+          <p class="muted" style="font-size:12px;margin-top:var(--s1)">
+            ${b.rule_type === "grade"
+              ? RULE_LABEL.grade(goal)
+              : `${Math.floor(cur)} / ${goal} — ${RULE_LABEL[b.rule_type](goal)}`}</p>
+        </div>`}
+      ${locked && !b.rule_type && html`<p class="muted" style="font-size:12px;margin-top:var(--s2)">
+        Attribué par un encadrant</p>`}
+    </div>`;
+  };
+
+  return html`
+    <div>
+      <h1 style="font-size:26px">Badges</h1>
+      <p class="muted" style="margin-bottom:var(--s4)">
+        ${won.length} obtenus sur ${all.length}. Les badges ne rapportent pas d'XP :
+        ils marquent le chemin parcouru.</p>
+
+      ${won.length > 0 && html`
+        <p class="eyebrow" style="margin-bottom:var(--s3)">Obtenus</p>
+        <div class="badges" style="margin-bottom:var(--s5)">${won.map((b) => card(b, false))}</div>`}
+
+      ${autoLeft.length > 0 && html`
+        <p class="eyebrow" style="margin-bottom:var(--s3)">Missions en cours</p>
+        <div class="badges" style="margin-bottom:var(--s5)">${autoLeft.map((b) => card(b, true))}</div>`}
+
+      ${manualLeft.length > 0 && html`
+        <p class="eyebrow" style="margin-bottom:var(--s3)">Distinctions de l'encadrement</p>
+        <div class="badges">${manualLeft.map((b) => card(b, true))}</div>`}
+    </div>`;
+}
+
+/* --- Bloc badges dans la fiche élève, avec attribution manuelle --- */
+function BadgesFiche({ me, studentId }) {
+  const [all, setAll] = useState([]);
+  const [mine, setMine] = useState({});
+  const [pick, setPick] = useState("");
+  const [note, setNote] = useState("");
+  const [err, setErr] = useState("");
+
+  useEffect(() => { load(); }, [studentId]);
+
+  async function load() {
+    const { data: b } = await db.from("badges").select("*").order("position");
+    setAll(b || []);
+    const { data: u } = await db.from("user_badges")
+      .select("badge_id, awarded_at, note").eq("user_id", studentId);
+    setMine(Object.fromEntries((u || []).map((x) => [x.badge_id, x])));
+  }
+
+  async function award() {
+    if (!pick) return;
+    const { error } = await db.from("user_badges").insert({
+      user_id: studentId, badge_id: pick, awarded_by: me.id, note: note.trim() || null });
+    if (error) setErr(error.message);
+    else { setPick(""); setNote(""); setErr(""); await load(); }
+  }
+
+  const won = all.filter((b) => mine[b.id]);
+  const givable = all.filter((b) => !mine[b.id] && b.kind === "manuel");
+
+  return html`
+    <div class="card">
+      <p class="eyebrow" style="margin-bottom:var(--s3)">Badges — ${won.length} obtenus</p>
+      ${won.length === 0 && html`<p class="muted">Aucun badge pour l'instant.</p>`}
+      ${won.length > 0 && html`<div style="display:flex;flex-wrap:wrap;gap:var(--s2);margin-bottom:var(--s3)">
+        ${won.map((b) => html`<span key=${b.id} class="pill" title=${b.description}>${b.monogram} ${b.name}</span>`)}
+      </div>`}
+
+      ${givable.length > 0 && html`
+        <div style="border-top:1px solid var(--line);padding-top:var(--s3)">
+          <label>Attribuer une distinction</label>
+          <select value=${pick} onChange=${(e) => setPick(e.target.value)} style="margin-bottom:var(--s2)">
+            <option value="">Choisir…</option>
+            ${givable.map((b) => html`<option key=${b.id} value=${b.id}>${b.name}</option>`)}
+          </select>
+          ${pick && html`<textarea value=${note} onInput=${(e) => setNote(e.target.value)}
+            placeholder="Un mot pour l'élève (facultatif)" style="margin-bottom:var(--s2)"></textarea>`}
+          <button class="ok tiny" disabled=${!pick} onClick=${award}>Attribuer</button>
+          ${err && html`<p class="error">${err}</p>`}
+        </div>`}
+    </div>`;
+}
+
+/* ==================================================================
    9. LISTE DES ÉLÈVES ET FICHE INDIVIDUELLE
    ================================================================== */
 function Eleves({ me, rows, totalLessons, onOpen, title, subtitle }) {
@@ -1161,6 +1325,8 @@ function Fiche({ me, studentId, courses, tutors, onBack, reload }) {
                 <div class="track dark"><i style=${`width:${pct}%`}></i></div></div>`;
             })}
           </div>
+
+          <${BadgesFiche} me=${me} studentId=${studentId} />
 
           <div class="card">
             <p class="eyebrow" style="margin-bottom:var(--s3)">Notes de suivi</p>
@@ -1471,6 +1637,8 @@ function App() {
   const [courses, setCourses] = useState([]);
   const [done, setDone] = useState(new Set());
   const [myXp, setMyXp] = useState({ xp:0, lessons_done:0, assignments_done:0 });
+  const [streak, setStreak] = useState(0);
+  const [fresh, setFresh] = useState(0);
   const [rows, setRows] = useState([]);
   const [tutors, setTutors] = useState([]);
   const [pendingCount, setPendingCount] = useState(0);
@@ -1518,6 +1686,13 @@ function App() {
       const { data: myx } = await db.from("user_xp")
         .select("xp, lessons_done, assignments_done").eq("user_id", uid).maybeSingle();
       setMyXp(myx || { xp:0, lessons_done:0, assignments_done:0 });
+
+      // Présence du jour, puis attribution des badges mérités.
+      await db.rpc("touch_today");
+      const { data: gained } = await db.rpc("refresh_my_badges");
+      setFresh(gained || 0);
+      const { data: st } = await db.rpc("my_streak");
+      setStreak(st || 0);
 
       if (prof.role !== "eleve") {
         let q = db.from("profiles").select("id, full_name, role, status, tutor_id").order("full_name");
@@ -1585,7 +1760,8 @@ function App() {
     : me.role === "encadrant"
       ? [["cours","Cours"], ["devoirs","Devoirs"], ["eleves","Mes élèves"], ["forum","Forum"],
          ["messages", unreadTotal ? `Messages (${unreadTotal})` : "Messages"]]
-      : [["cours","Mes cours"], ["devoirs","Devoirs"], ["forum","Forum"], ["messages","Mon encadrant"]];
+      : [["cours","Mes cours"], ["devoirs","Devoirs"], ["badges","Badges"],
+         ["forum","Forum"], ["messages","Mon encadrant"]];
 
   return html`
     <div>
@@ -1623,11 +1799,14 @@ function App() {
                        subtitle=${me.role === "admin"
                          ? `${rows.length} comptes élèves`
                          : `${rows.length} élèves te sont rattachés`} />`)
+        : view.page === "badges" ? html`<${Badges} me=${me} />`
         : view.page === "forum" ? html`<${Forum} me=${me} />`
         : view.page === "messages" ? html`<${Messagerie} me=${me} students=${rows} />`
         : view.id ? html`<${Cours} course=${visible.find((c)=>c.id===view.id)} done=${done} busy=${busy}
             readOnly=${staff} onToggle=${toggle} onBack=${() => setView({ page:"cours" })} />`
         : html`<${MesCours} me=${me} courses=${visible} done=${done} xp=${xp}
+            streak=${streak} fresh=${fresh}
+            onBadges=${() => { setFresh(0); setView({ page:"badges" }); }}
             onOpen=${(id) => setView({ page:"cours", id })} />`}
       </div>
     </div>`;
