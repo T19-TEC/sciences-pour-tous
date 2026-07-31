@@ -128,6 +128,45 @@ tr:last-child td{border-bottom:none}
   border:1px solid var(--line);border-radius:var(--radius);padding:var(--s2) var(--s3);
   margin-bottom:var(--s2);font-size:14px}
 .slot.chosen{border-color:var(--ok);background:#ECFDF5}
+/* --- Menu de compte --- */
+.acct{position:relative}
+.acct-btn{background:none;padding:0;border-radius:50%;line-height:0}
+.acct-btn:hover{background:none;opacity:.85}
+.acct-menu{position:absolute;right:0;top:calc(100% + 8px);z-index:60;width:250px;
+  background:var(--white);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:0 8px 28px rgba(15,23,42,.14);overflow:hidden;color:var(--ink)}
+.acct-menu header{padding:var(--s3) var(--s4);border-bottom:1px solid var(--line)}
+.acct-menu button{display:block;width:100%;text-align:left;background:none;color:var(--ink);
+  padding:var(--s2) var(--s4);border-radius:0;font-size:14px}
+.acct-menu button:hover:not(:disabled){background:var(--paper)}
+.acct-menu .sep{border-top:1px solid var(--line);margin:var(--s1) 0}
+.acct-menu label{padding:var(--s2) var(--s4) 0;margin:0}
+/* --- Grades --- */
+.grade{display:inline-block;font-size:11px;padding:1px var(--s2);border-radius:999px;
+  margin-left:var(--s2);border:1px solid #FDE68A;background:#FFFBEB;color:#78350F}
+/* --- Cartes élèves --- */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:var(--s3)}
+.scard{border:1px solid var(--line);border-radius:var(--radius);background:var(--white);
+  padding:var(--s4);text-align:left;width:100%;color:var(--ink);display:block}
+.scard:hover{background:var(--paper);border-color:var(--gray-soft)}
+.scard.alert{border-color:#FDE68A;background:#FFFBEB}
+.scard.alert:hover{background:#FEF3C7}
+.chips{display:flex;flex-wrap:wrap;gap:var(--s1);margin-top:var(--s2)}
+.chip{font-size:11px;padding:1px var(--s2);border-radius:999px;border:1px solid var(--line);
+  background:var(--paper);color:var(--gray)}
+.chip.hot{border-color:#FECACA;background:#FEF2F2;color:#991B1B}
+.chip.ok{border-color:#A7F3D0;background:#ECFDF5;color:#065F46}
+.chip.fire{border-color:#FDE68A;background:#FFFBEB;color:#78350F}
+/* --- Graphiques --- */
+.bars{display:flex;align-items:flex-end;gap:3px;height:90px}
+.bars > div{flex:1;background:var(--ink);border-radius:2px 2px 0 0;min-height:2px;position:relative}
+.bars > div.soft{background:var(--gray-soft)}
+.axis{display:flex;justify-content:space-between;font-size:11px;color:var(--gray-soft);margin-top:var(--s2)}
+/* --- Fenêtre modale --- */
+.veil{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:80;display:flex;
+  align-items:center;justify-content:center;padding:var(--s4)}
+.modal{background:var(--white);border-radius:12px;width:100%;max-width:520px;
+  max-height:88vh;overflow-y:auto;padding:var(--s5)}
 </style>
 </head>
 
@@ -516,12 +555,17 @@ function EnAttente({ me, details, reload }) {
 /* ==================================================================
    6. ESPACE ÉLÈVE
    ================================================================== */
-function MesCours({ me, courses, done, xp, streak, fresh, onOpen, onBadges }) {
+function MesCours({ me, courses, done, xp, streak, fresh, onOpen, onBadges, onReport }) {
   const lvl = levelOf(xp), into = xp % XP_PER_LEVEL;
   return html`
     <div>
-      <h1 style="font-size:26px">Bonjour ${me.full_name.split(" ")[0]}</h1>
-      <p class="muted" style="margin-bottom:var(--s4)">Reprends où tu t'es arrêté.</p>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);flex-wrap:wrap;margin-bottom:var(--s4)">
+        <div>
+          <h1 style="font-size:26px">Bonjour ${me.full_name.split(" ")[0]}</h1>
+          <p class="muted">Reprends où tu t'es arrêté.</p>
+        </div>
+        ${onReport && html`<button class="ghost" onClick=${onReport}>Un souci, une idée ?</button>`}
+      </div>
 
       ${fresh > 0 && html`<div class="notice" style="margin-bottom:var(--s4)">
         Tu viens de débloquer ${fresh} nouveau${fresh > 1 ? "x" : ""} badge${fresh > 1 ? "s" : ""}.
@@ -555,6 +599,7 @@ function MesCours({ me, courses, done, xp, streak, fresh, onOpen, onBadges }) {
           </div>`;
         })}
       </div>
+      <div style="margin-top:var(--s5)"><${MesSignalements} me=${me} /></div>
     </div>`;
 }
 
@@ -625,6 +670,8 @@ function Cours({ course, done, onToggle, onBack, busy, readOnly }) {
    7. FORUM
    ================================================================== */
 function Forum({ me }) {
+  const [grades, setGrades] = useState({});
+  const [can, setCan] = useState({});
   const [threads, setThreads] = useState([]);
   const [open, setOpen] = useState(null);
   const [replies, setReplies] = useState([]);
@@ -635,13 +682,37 @@ function Forum({ me }) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  useEffect(() => { loadThreads(); }, []);
+  useEffect(() => { loadThreads(); loadGrades(); }, []);
+
+  async function loadGrades() {
+    const { data } = await db.from("public_grades").select("id, level, grade_name");
+    setGrades(Object.fromEntries((data || []).map((g) => [g.id, g])));
+    if (me.role !== "eleve") {
+      const perms = {};
+      for (const p of ["delete_reply","delete_thread","pin","lock","moderate"]) {
+        const { data: ok } = await db.rpc("grade_allows", { perm: p });
+        perms[p] = ok === true || me.role === "admin";
+      }
+      setCan(perms);
+    }
+  }
+
+  // Pastille de grade affichée à côté du nom.
+  const gradeOf = (id) => {
+    const g = grades[id];
+    return g ? html`<span class="grade">${g.grade_name}</span>` : null;
+  };
+
+  async function toggleFlag(t, field) {
+    await db.from("forum_threads").update({ [field]: !t[field] }).eq("id", t.id);
+    await loadThreads();
+  }
 
   async function loadThreads() {
     setLoading(true);
     const { data, error } = await db.from("forum_threads")
-      .select("id, title, body, created_at, author_id, profiles(full_name, role, avatar_path), forum_replies(id)")
-      .order("created_at", { ascending: false });
+      .select("id, title, body, created_at, author_id, pinned, locked, profiles(full_name, role, avatar_path), forum_replies(id)")
+      .order("pinned", { ascending: false }).order("created_at", { ascending: false });
     if (error) setErr(error.message); else setThreads(data || []);
     setLoading(false);
   }
@@ -680,23 +751,34 @@ function Forum({ me }) {
     <div>
       <button class="plain" onClick=${() => { setOpen(null); loadThreads(); }}>← Retour au forum</button>
       <h1 style="font-size:24px;margin:var(--s3) 0 var(--s1)">${open.title}</h1>
-      <p class="muted" style="margin-bottom:var(--s4)">${open.profiles?.full_name || "Anonyme"}<${Role} role=${open.profiles?.role} /> · ${since(open.created_at)}</p>
+      <p class="muted" style="margin-bottom:var(--s4)">${open.profiles?.full_name || "Anonyme"}<${Role} role=${open.profiles?.role} />${gradeOf(open.author_id)} · ${since(open.created_at)}</p>
+      ${(can.pin || can.lock) && html`<div style="display:flex;gap:var(--s2);margin-bottom:var(--s4);flex-wrap:wrap">
+        ${can.pin && html`<button class="ghost tiny" onClick=${async () => {
+          await toggleFlag(open, "pinned"); setOpen({ ...open, pinned: !open.pinned }); }}>
+          ${open.pinned ? "Désépingler" : "Épingler"}</button>`}
+        ${can.lock && html`<button class="ghost tiny" onClick=${async () => {
+          await toggleFlag(open, "locked"); setOpen({ ...open, locked: !open.locked }); }}>
+          ${open.locked ? "Déverrouiller" : "Verrouiller"}</button>`}
+      </div>`}
       ${open.body && html`<div class="card" style="margin-bottom:var(--s4)"><p style="white-space:pre-wrap">${open.body}</p></div>`}
       <div class="card">
         ${replies.length === 0 && html`<p class="muted">Aucune réponse pour l'instant.</p>`}
         ${replies.map((r) => html`<div class="row" key=${r.id} style="align-items:flex-start">
           <div style="flex:1">
-            <p class="muted" style="margin-bottom:var(--s1)">${r.profiles?.full_name || "Anonyme"}<${Role} role=${r.profiles?.role} /> · ${since(r.created_at)}</p>
+            <p class="muted" style="margin-bottom:var(--s1)">${r.profiles?.full_name || "Anonyme"}<${Role} role=${r.profiles?.role} />${gradeOf(r.author_id)} · ${since(r.created_at)}</p>
             <p style="white-space:pre-wrap">${r.body}</p></div>
-          ${(r.author_id === me.id || me.role !== "eleve") && html`
+          ${(r.author_id === me.id || can.delete_reply) && html`
             <button class="danger" onClick=${() => remove(r.id, "forum_replies", () => openThread(open))}>Supprimer</button>`}
         </div>`)}
       </div>
-      <form onSubmit=${reply} style="margin-top:var(--s4)">
-        <label>Ta réponse</label>
-        <textarea value=${answer} onInput=${(e)=>setAnswer(e.target.value)}></textarea>
-        <button style="margin-top:var(--s2)" disabled=${!answer.trim()}>Répondre</button>
-      </form>
+      ${open.locked
+        ? html`<p class="warn" style="margin-top:var(--s4)">
+            Cette discussion est verrouillée. Elle reste consultable mais n'accepte plus de réponse.</p>`
+        : html`<form onSubmit=${reply} style="margin-top:var(--s4)">
+            <label>Ta réponse</label>
+            <textarea value=${answer} onInput=${(e)=>setAnswer(e.target.value)}></textarea>
+            <button style="margin-top:var(--s2)" disabled=${!answer.trim()}>Répondre</button>
+          </form>`}
       ${err && html`<p class="error">${err}</p>`}
     </div>`;
 
@@ -718,10 +800,10 @@ function Forum({ me }) {
       <div class="card" style="padding:var(--s2)">
         ${threads.map((t) => html`<div key=${t.id} style="display:flex;align-items:center;gap:var(--s2)">
           <button class="rowbtn" onClick=${() => openThread(t)}>
-            <span style="display:block">${t.title}</span>
-            <span class="muted">${t.profiles?.full_name || "Anonyme"}<${Role} role=${t.profiles?.role} /> · ${(t.forum_replies||[]).length} réponses · ${since(t.created_at)}</span>
+            <span style="display:block">${t.pinned ? "📌 " : ""}${t.locked ? "🔒 " : ""}${t.title}</span>
+            <span class="muted">${t.profiles?.full_name || "Anonyme"}<${Role} role=${t.profiles?.role} />${gradeOf(t.author_id)} · ${(t.forum_replies||[]).length} réponses · ${since(t.created_at)}</span>
           </button>
-          ${(t.author_id === me.id || me.role !== "eleve") && html`
+          ${(t.author_id === me.id || can.delete_thread) && html`
             <button class="danger" style="padding-right:var(--s3)"
               onClick=${() => remove(t.id, "forum_threads", loadThreads)}>Supprimer</button>`}
         </div>`)}
@@ -1901,10 +1983,12 @@ function Stat({ value, label, warn }) {
     <b>${value}</b><span>${label}</span></div>`;
 }
 
-function BordEncadrant({ me, rows, onOpen }) {
+function BordEncadrant({ me, rows, onOpen, onReport }) {
   const [s, setS] = useState(null);
   const [follow, setFollow] = useState([]);
   const [rdv, setRdv] = useState([]);
+  const [serie, setSerie] = useState([]);
+  const [grade, setGrade] = useState(null);
 
   useEffect(() => { load(); }, []);
 
@@ -1916,66 +2000,213 @@ function BordEncadrant({ me, rows, onOpen }) {
     const { data: m } = await db.from("meetings_view")
       .select("*").eq("staff_id", me.id).eq("status", "confirme").order("when_at");
     setRdv((m || []).filter((x) => x.when_at && new Date(x.when_at) > Date.now()));
+    const { data: sr } = await db.rpc("activity_series");
+    setSerie(sr || []);
+    const { data: g } = await db.rpc("my_grade");
+    setGrade(Array.isArray(g) ? g[0] : g);
   }
 
   if (!s) return html`<p class="muted">Chargement du tableau de bord…</p>`;
 
-  const stale = follow.filter((f) => !f.last_seen ||
-    (Date.now() - new Date(f.last_seen)) / 86400000 > 14);
-  const noPoint = follow.filter((f) => !f.last_meeting ||
-    (Date.now() - new Date(f.last_meeting)) / 86400000 > 30);
+  const days = (d) => d ? Math.floor((Date.now() - new Date(d)) / 86400000) : null;
+  const byId = Object.fromEntries(follow.map((f) => [f.student_id, f]));
+
+  // Une carte par élève : peu d'élèves, donc autant tout montrer d'un coup.
+  const eleves = rows.map((r) => {
+    const f = byId[r.id] || {};
+    const seen = days(f.last_seen), met = days(f.last_meeting);
+    const alerts = [];
+    if (seen === null || seen > 14) alerts.push({ t:"hot", l: seen === null ? "jamais venu" : `absent depuis ${seen} j` });
+    if (met === null || met > 30)   alerts.push({ t:"hot", l: met === null ? "aucun point tenu" : `dernier point il y a ${met} j` });
+    if (r.unread > 0)               alerts.push({ t:"hot", l: `${r.unread} message${r.unread > 1 ? "s" : ""} non lu${r.unread > 1 ? "s" : ""}` });
+    if (f.next_meeting)             alerts.push({ t:"ok",  l: `point le ${dateFr(f.next_meeting)}` });
+    if (seen !== null && seen <= 2) alerts.push({ t:"fire", l: "actif cette semaine" });
+    return { ...r, f, alerts, urgent: alerts.some((a) => a.t === "hot") };
+  }).sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0));
 
   return html`
     <div>
-      <h1 style="font-size:26px">Mon tableau de bord</h1>
-      <p class="muted" style="margin-bottom:var(--s4)">L'essentiel de ton accompagnement.</p>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);flex-wrap:wrap;margin-bottom:var(--s4)">
+        <div>
+          <h1 style="font-size:26px">Bonjour ${me.full_name.split(" ")[0]}</h1>
+          <p class="muted">L'essentiel de ton accompagnement, en un coup d'œil.</p>
+        </div>
+        <button class="ghost" onClick=${onReport}>Un souci, une idée ?</button>
+      </div>
 
       <div class="stats" style="margin-bottom:var(--s5)">
-        <${Stat} value=${s.my_students} label="élèves rattachés" />
-        <${Stat} value=${s.to_correct} label="copies libres à corriger" warn=${s.to_correct > 0} />
-        <${Stat} value=${s.claimed_by_me} label="copies que tu as prises" warn=${s.claimed_by_me > 0} />
+        <${Stat} value=${s.my_students} label="élèves suivis" />
+        <${Stat} value=${s.to_correct} label="copies libres" warn=${s.to_correct > 0} />
+        <${Stat} value=${s.claimed_by_me} label="copies prises" warn=${s.claimed_by_me > 0} />
         <${Stat} value=${s.unread} label="messages non lus" warn=${s.unread > 0} />
       </div>
 
-      <div class="card">
-        <p class="eyebrow" style="margin-bottom:var(--s3)">Prochains points</p>
-        ${rdv.length === 0 && html`<p class="muted">Aucun rendez-vous confirmé à venir.</p>`}
-        ${rdv.map((m) => html`<div class="row" key=${m.id}>
-          <div><span style="font-size:14px">${m.student_name}</span>
-            <span class="muted" style="display:block">
-              ${slotLabel(m.when_at, m.chosen_minutes)} · ${MODE_LABEL[m.mode] || ""}</span></div>
-          <button class="ghost tiny" onClick=${() => onOpen(m.student_id)}>Fiche</button>
-        </div>`)}
+      ${grade && html`<div class="card" style="margin-bottom:var(--s5)">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:var(--s3);flex-wrap:wrap">
+          <div>
+            <p class="eyebrow">Ton grade</p>
+            <p style="font-family:var(--serif);font-size:22px;margin-top:var(--s1)">
+              ${grade.name} <span class="muted" style="font-size:13px">niveau ${grade.level} sur 7</span></p>
+            <p class="muted">${grade.description}</p>
+          </div>
+          <p style="font-family:var(--serif);font-size:26px">${grade.points}<span class="muted" style="font-size:13px"> pts</span></p>
+        </div>
+        ${grade.next_name && html`
+          <div class="track dark" style="margin-top:var(--s3)">
+            <i style=${`width:${Math.min(100, Math.round((grade.points / grade.next_points) * 100))}%`}></i></div>
+          <p class="muted" style="margin-top:var(--s2)">
+            Encore ${Math.max(0, grade.next_points - grade.points)} points pour devenir ${grade.next_name}.</p>`}
+      </div>`}
+
+      <p class="eyebrow" style="margin-bottom:var(--s3)">Mes élèves</p>
+      ${eleves.length === 0
+        ? html`<div class="card"><p class="muted">Aucun élève ne t'est rattaché pour l'instant.</p></div>`
+        : html`<div class="cards" style="margin-bottom:var(--s5)">
+            ${eleves.map((e) => html`<button class=${"scard" + (e.urgent ? " alert" : "")}
+              key=${e.id} onClick=${() => onOpen(e.id)}>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:var(--s2)">
+                <span style="font-size:15px">${e.full_name}</span>
+                <span class="muted" style="font-size:12px">${e.xp} XP</span>
+              </div>
+              <div class="track dark" style="margin-top:var(--s2)">
+                <i style=${`width:${Math.min(100, e.lessons_done * 8)}%`}></i></div>
+              <p class="muted" style="margin-top:var(--s1);font-size:12px">
+                ${e.lessons_done} leçons · ${e.f.last_seen ? `vu le ${dateFr(e.f.last_seen)}` : "jamais venu"}</p>
+              <div class="chips">
+                ${e.alerts.slice(0, 3).map((a, i) => html`<span key=${i} class=${"chip " + a.t}>${a.l}</span>`)}
+              </div>
+            </button>`)}
+          </div>`}
+
+      <div class="split">
+        <div class="card">
+          <p class="eyebrow" style="margin-bottom:var(--s3)">Activité de l'association</p>
+          <${Barres} data=${serie} keyName="actives" legend="élèves connectés par jour" />
+        </div>
+        <div class="card">
+          <p class="eyebrow" style="margin-bottom:var(--s3)">Prochains points</p>
+          ${rdv.length === 0 && html`<p class="muted">Aucun rendez-vous confirmé.</p>`}
+          ${rdv.slice(0, 4).map((m) => html`<div class="row" key=${m.id}>
+            <div style="min-width:0"><span style="font-size:14px">${m.student_name}</span>
+              <span class="muted" style="display:block">
+                ${slotLabel(m.when_at, m.chosen_minutes)}</span></div>
+          </div>`)}
+        </div>
       </div>
 
-      ${noPoint.length > 0 && html`<div class="card">
-        <p class="eyebrow" style="margin-bottom:var(--s2)">Sans point depuis plus d'un mois</p>
-        <p class="muted" style="margin-bottom:var(--s3)">
-          Un accompagnement qui s'espace est un accompagnement qui s'éteint.
-          Propose-leur un créneau depuis leur fiche.</p>
-        ${noPoint.map((f) => html`<div class="row" key=${f.student_id}>
-          <div><span style="font-size:14px">${f.full_name}</span>
-            <span class="muted" style="display:block">
-              ${f.last_meeting ? `dernier point le ${dateFr(f.last_meeting)}` : "aucun point à ce jour"}</span></div>
-          <button class="ghost tiny" onClick=${() => onOpen(f.student_id)}>Fiche</button>
-        </div>`)}
-      </div>`}
-
-      ${stale.length > 0 && html`<div class="card">
-        <p class="eyebrow" style="margin-bottom:var(--s2)">Ne se sont pas connectés depuis deux semaines</p>
-        ${stale.map((f) => html`<div class="row" key=${f.student_id}>
-          <div><span style="font-size:14px">${f.full_name}</span>
-            <span class="muted" style="display:block">
-              ${f.last_seen ? `vu le ${dateFr(f.last_seen)}` : "jamais connecté"}</span></div>
-          <button class="ghost tiny" onClick=${() => onOpen(f.student_id)}>Fiche</button>
-        </div>`)}
-      </div>`}
+      <div style="margin-top:var(--s3)"><${MesSignalements} me=${me} /></div>
     </div>`;
 }
 
-function BordAdmin({ onGo }) {
+/* --- Onglet Rappel : alertes de suivi et engagement du mois ------- */
+function Rappel({ me, rows, onOpen }) {
+  const [follow, setFollow] = useState([]);
+  const [month, setMonth] = useState(monthStart(1));
+  const [av, setAv] = useState({ hours_per_week:"", note:"" });
+  const [saved, setSaved] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  useEffect(() => { load(); }, []);
+  useEffect(() => { loadAv(month); }, [month]);
+
+  async function load() {
+    const { data } = await db.from("follow_up").select("*").eq("tutor_id", me.id);
+    setFollow(data || []);
+  }
+
+  async function loadAv(m) {
+    const { data } = await db.from("staff_availability")
+      .select("hours_per_week, note").eq("user_id", me.id).eq("month", m).maybeSingle();
+    setAv({ hours_per_week: data?.hours_per_week ?? "", note: data?.note || "" });
+    setSaved(!!data);
+  }
+
+  async function save() {
+    const { error } = await db.from("staff_availability").upsert({
+      user_id: me.id, month,
+      hours_per_week: Number(av.hours_per_week) || 0,
+      note: av.note?.trim() || null, updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id,month" });
+    if (!error) { setMsg(`Engagement enregistré pour ${monthLabel(month)}.`); setSaved(true); }
+  }
+
+  const days = (d) => d ? Math.floor((Date.now() - new Date(d)) / 86400000) : null;
+  const byId = Object.fromEntries(follow.map((f) => [f.student_id, f]));
+
+  const alertes = rows.map((r) => {
+    const f = byId[r.id] || {};
+    const seen = days(f.last_seen), met = days(f.last_meeting);
+    const raisons = [];
+    if (seen === null) raisons.push("ne s'est jamais connecté");
+    else if (seen > 14) raisons.push(`absent depuis ${seen} jours`);
+    if (met === null) raisons.push("aucun point tenu à ce jour");
+    else if (met > 30) raisons.push(`dernier point il y a ${met} jours`);
+    if (r.unread > 0) raisons.push(`${r.unread} message${r.unread > 1 ? "s" : ""} sans réponse`);
+    return { ...r, raisons, next: f.next_meeting };
+  }).filter((x) => x.raisons.length > 0);
+
+  const jour = new Date().getDate();
+  const periode = jour >= 15;
+
+  return html`
+    <div>
+      <h1 style="font-size:26px">Rappels</h1>
+      <p class="muted" style="margin-bottom:var(--s4)">
+        Ce qui demande ton attention, et ton engagement pour le mois qui vient.</p>
+
+      ${alertes.length === 0
+        ? html`<div class="card"><p class="muted">
+            Aucune alerte. Tous tes élèves sont vus, suivis et à jour.</p></div>`
+        : html`<div class="card">
+            <p class="eyebrow" style="margin-bottom:var(--s3)">
+              ${alertes.length} élève${alertes.length > 1 ? "s" : ""} à relancer</p>
+            ${alertes.map((a) => html`<div class="row" key=${a.id}>
+              <div style="min-width:0">
+                <span style="font-size:14px">${a.full_name}</span>
+                <span class="muted" style="display:block">${a.raisons.join(" · ")}</span>
+              </div>
+              <button class="ghost tiny" onClick=${() => onOpen(a.id)}>Ouvrir la fiche</button>
+            </div>`)}
+          </div>`}
+
+      <div class="card">
+        <p class="eyebrow" style="margin-bottom:var(--s2)">Mon engagement</p>
+        ${periode && !saved && html`<p class="warn" style="margin-bottom:var(--s3)">
+          Nous sommes en seconde quinzaine : c'est le moment de déclarer ta disponibilité
+          pour ${monthLabel(monthStart(1))}. Le bureau en a besoin pour répartir les élèves.</p>`}
+
+        <div class="split">
+          <div>
+            <div class="field"><label>Mois concerné</label>
+              <select value=${month} onChange=${(e) => { setMonth(e.target.value); setMsg(""); }}>
+                ${[0,1,2].map((o) => html`<option key=${o} value=${monthStart(o)}>${monthLabel(monthStart(o))}</option>`)}
+              </select></div>
+            <div class="field"><label>Heures par semaine — objectif 7</label>
+              <input type="range" min="0" max="7" step="0.5" value=${av.hours_per_week || 0}
+                onInput=${(e) => setAv({ ...av, hours_per_week:e.target.value })} /></div>
+            <div class="field"><label>Indisponibilités, remarques</label>
+              <textarea value=${av.note} onInput=${(e) => setAv({ ...av, note:e.target.value })}
+                placeholder="Plutôt le week-end · absent la semaine du 12 · je peux prendre un élève de plus…"></textarea></div>
+            <button onClick=${save}>Enregistrer mon engagement</button>
+            ${msg && html`<p class="notice">${msg}</p>`}
+          </div>
+          <div style="display:flex;align-items:center;justify-content:center">
+            <${Jauge} value=${av.hours_per_week || 0} max=${7} />
+          </div>
+        </div>
+
+        <p class="muted" style="margin-top:var(--s3)">
+          Sept heures par semaine, c'est l'engagement d'un encadrant pleinement disponible.
+          Mieux vaut annoncer deux heures et les tenir que sept et décrocher — le bureau
+          répartit les élèves d'après ce que tu déclares.</p>
+      </div>
+    </div>`;
+}
+
+function BordAdmin({ me, onGo, onReport }) {
   const [s, setS] = useState(null);
   const [rdv, setRdv] = useState([]);
+  const [serie, setSerie] = useState([]);
 
   useEffect(() => { load(); }, []);
 
@@ -1985,14 +2216,21 @@ function BordAdmin({ onGo }) {
     const { data: m } = await db.from("meetings_view")
       .select("*").eq("status", "confirme").order("when_at");
     setRdv((m || []).filter((x) => x.when_at && new Date(x.when_at) > Date.now()).slice(0, 8));
+    const { data: sr } = await db.rpc("activity_series");
+    setSerie(sr || []);
   }
 
   if (!s) return html`<p class="muted">Chargement du tableau de bord…</p>`;
 
   return html`
     <div>
-      <h1 style="font-size:26px">Tableau de bord</h1>
-      <p class="muted" style="margin-bottom:var(--s4)">L'état de l'association, sur les sept derniers jours.</p>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);flex-wrap:wrap;margin-bottom:var(--s4)">
+        <div>
+          <h1 style="font-size:26px">Tableau de bord</h1>
+          <p class="muted">L'état de l'association, sur les sept derniers jours.</p>
+        </div>
+        <button class="ghost" onClick=${onReport}>Un souci, une idée ?</button>
+      </div>
 
       <p class="eyebrow" style="margin-bottom:var(--s3)">Les gens</p>
       <div class="stats" style="margin-bottom:var(--s5)">
@@ -2016,6 +2254,26 @@ function BordAdmin({ onGo }) {
         <${Stat} value=${Number(s.hours_committed || 0)} label="heures/semaine engagées ce mois" />
       </div>
 
+      <p class="eyebrow" style="margin-bottom:var(--s3)">Quinze derniers jours</p>
+      <div class="grid2" style="margin-bottom:var(--s5)">
+        <div class="card">
+          <p class="muted" style="margin-bottom:var(--s3)">Élèves connectés</p>
+          <${Barres} data=${serie} keyName="actives" legend="par jour" />
+        </div>
+        <div class="card">
+          <p class="muted" style="margin-bottom:var(--s3)">Leçons validées</p>
+          <${Barres} data=${serie} keyName="lessons" legend="par jour" />
+        </div>
+        <div class="card">
+          <p class="muted" style="margin-bottom:var(--s3)">Messages échangés</p>
+          <${Barres} data=${serie} keyName="messages" legend="par jour" />
+        </div>
+        <div class="card">
+          <p class="muted" style="margin-bottom:var(--s3)">Devoirs rendus</p>
+          <${Barres} data=${serie} keyName="submissions" legend="par jour" />
+        </div>
+      </div>
+
       <div class="card">
         <p class="eyebrow" style="margin-bottom:var(--s3)">Prochains rendez-vous de l'équipe</p>
         ${rdv.length === 0 && html`<p class="muted">Aucun rendez-vous confirmé à venir.</p>`}
@@ -2035,7 +2293,241 @@ function BordAdmin({ onGo }) {
           <span style="font-size:14px">${s.without_tutor} élève${s.without_tutor > 1 ? "s" : ""} sans encadrant</span>
           <button class="ghost tiny" onClick=${() => onGo("eleves")}>Rattacher</button></div>`}
       </div>`}
+
+      <div style="margin-top:var(--s3)"><${MesSignalements} me=${me} /></div>
     </div>`;
+}
+
+/* ==================================================================
+   8decies. PETITS COMPOSANTS VISUELS
+   ================================================================== */
+
+/* Jauge d'engagement, façon compteur de bord. Objectif : 7 h/semaine. */
+function Jauge({ value, max = 7, size = 190, label }) {
+  const v = Math.max(0, Math.min(Number(value) || 0, max));
+  const r = 68, cx = 95, cy = 100;
+  const ang = Math.PI * (1 - v / max);
+  const px = cx + r * Math.cos(ang), py = cy - r * Math.sin(ang);
+  const nx = cx + (r - 16) * Math.cos(ang), ny = cy - (r - 16) * Math.sin(ang);
+  const col = v >= max ? "var(--ok)" : v >= max * 0.6 ? "var(--xp-bright)" : "var(--gray-soft)";
+
+  return html`<div style="text-align:center">
+    <svg viewBox="0 0 190 130" style=${`width:${size}px;max-width:100%`} role="img"
+         aria-label=${`${v} heures par semaine sur un objectif de ${max}`}>
+      <path d=${`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
+            fill="none" stroke="var(--line)" stroke-width="13" stroke-linecap="round" />
+      ${v > 0 && html`<path d=${`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${px} ${py}`}
+            fill="none" stroke=${col} stroke-width="13" stroke-linecap="round" />`}
+      <line x1=${cx} y1=${cy} x2=${nx} y2=${ny} stroke="var(--ink)" stroke-width="2.5" stroke-linecap="round" />
+      <circle cx=${cx} cy=${cy} r="5" fill="var(--ink)" />
+      <text x=${cx} y="72" text-anchor="middle" font-family="Georgia, serif" font-size="30"
+            fill="var(--ink)">${v}</text>
+      <text x=${cx - r} y=${cy + 18} text-anchor="middle" font-size="11" fill="var(--gray-soft)">0</text>
+      <text x=${cx + r} y=${cy + 18} text-anchor="middle" font-size="11" fill="var(--gray-soft)">${max}</text>
+    </svg>
+    <p class="muted" style="margin-top:-6px">${label || "heures par semaine"}</p>
+  </div>`;
+}
+
+/* Histogramme sobre : une barre par jour. */
+function Barres({ data, keyName, legend }) {
+  const max = Math.max(1, ...data.map((d) => d[keyName] || 0));
+  return html`<div>
+    <div class="bars">
+      ${data.map((d, i) => html`<div key=${i}
+        class=${i >= data.length - 7 ? "" : "soft"}
+        style=${`height:${Math.round(((d[keyName] || 0) / max) * 100)}%`}
+        title=${`${dateFr(d.day)} — ${d[keyName] || 0}`}></div>`)}
+    </div>
+    <div class="axis">
+      <span>${data.length ? dateFr(data[0].day) : ""}</span>
+      <span>${legend}</span>
+      <span>aujourd'hui</span>
+    </div>
+  </div>`;
+}
+
+/* ==================================================================
+   8undecies. MENU DE COMPTE
+   ================================================================== */
+function MenuCompte({ me, grade, viewAs, lower, onView, onGo }) {
+  const [open, setOpen] = useState(false);
+  return html`<div class="acct">
+    <button class="acct-btn" onClick=${() => setOpen(!open)} aria-label="Mon compte">
+      <${Avatar} name=${me.full_name} path=${me.avatar_path} size=${34} />
+    </button>
+    ${open && html`
+      <div style="position:fixed;inset:0;z-index:50" onClick=${() => setOpen(false)}></div>
+      <div class="acct-menu">
+        <header>
+          <p style="font-size:14px">${me.full_name}</p>
+          <p class="muted">${ROLES[me.role]}${grade ? ` · ${grade.name}` : ""}</p>
+        </header>
+        <button onClick=${() => { setOpen(false); onGo("compte"); }}>Mon compte</button>
+        ${me.role !== "eleve" && html`
+          <button onClick=${() => { setOpen(false); onGo("profil"); }}>Mon profil public</button>`}
+        ${lower.length > 0 && html`
+          <div class="sep"></div>
+          <label>Affichage</label>
+          ${[null, ...lower].map((r) => html`<button key=${r || "self"}
+            onClick=${() => { setOpen(false); onView(r); }}>
+            ${(viewAs || null) === r ? "✓ " : ""}${r ? `Voir comme ${ROLES[r].toLowerCase()}` : `Ma vue (${ROLES[me.role].toLowerCase()})`}
+          </button>`)}`}
+        <div class="sep"></div>
+        <button onClick=${() => db.auth.signOut()}>Se déconnecter</button>
+      </div>`}
+  </div>`;
+}
+
+/* ==================================================================
+   8duodecies. MON COMPTE — DONNÉES PERSONNELLES
+   ================================================================== */
+function MonCompte({ me, reload }) {
+  const [d, setD] = useState(null);
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+  const [mail, setMail] = useState("");
+
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    const { data } = await db.from("student_details").select("*").eq("user_id", me.id).maybeSingle();
+    setD(data || {});
+    const { data: s } = await db.auth.getUser();
+    setMail(s?.user?.email || "");
+  }
+
+  async function save() {
+    setMsg(""); setErr("");
+    const { error } = await db.from("student_details")
+      .update({ discord: d.discord?.trim() || null, school: d.school?.trim() || null,
+                phone: d.phone?.trim() || null })
+      .eq("user_id", me.id);
+    if (error) setErr(error.message);
+    else { setMsg("Enregistré."); await load(); await reload(); }
+  }
+
+  if (!d) return html`<p class="muted">Chargement…</p>`;
+  const age = ageFrom(d.birthdate);
+
+  return html`
+    <div style="max-width:620px">
+      <h1 style="font-size:26px">Mon compte</h1>
+      <p class="muted" style="margin-bottom:var(--s4)">Tes informations personnelles.</p>
+      ${err && html`<p class="error" style="margin-bottom:var(--s3)">${err}</p>`}
+      ${msg && html`<p class="notice" style="margin-bottom:var(--s3)">${msg}</p>`}
+
+      <div class="card">
+        <p class="eyebrow" style="margin-bottom:var(--s3)">Identité — non modifiable</p>
+        <dl class="dl">
+          <dt>Nom</dt><dd>${me.full_name}</dd>
+          <dt>Adresse e-mail</dt><dd style="word-break:break-all">${mail || "—"}</dd>
+          <dt>Date de naissance</dt><dd>${dateFr(d.birthdate)}${age !== null ? ` · ${age} ans` : ""}</dd>
+          ${d.parent_name && html`<dt>Responsable légal</dt><dd>${d.parent_name}</dd>`}
+          ${d.parent_email && html`<dt>E-mail du parent</dt><dd style="word-break:break-all">${d.parent_email}</dd>`}
+        </dl>
+        <p class="muted" style="margin-top:var(--s3)">
+          L'association doit pouvoir te joindre, ainsi que ta famille : ces informations
+          ne peuvent pas être effacées depuis ton compte. Pour en faire corriger une,
+          écris à ton encadrant depuis la messagerie — c'est ton droit de rectification,
+          et il s'exerce auprès de l'association.
+        </p>
+      </div>
+
+      <div class="card">
+        <p class="eyebrow" style="margin-bottom:var(--s3)">Ce que tu peux compléter</p>
+        <div class="field"><label>Téléphone</label>
+          <input value=${d.phone || ""} onInput=${(e) => setD({ ...d, phone:e.target.value })}
+            placeholder="Une fois renseigné, il ne peut plus être vidé" /></div>
+        <div class="field"><label>Pseudo Discord</label>
+          <input value=${d.discord || ""} onInput=${(e) => setD({ ...d, discord:e.target.value })} /></div>
+        <div class="field"><label>Établissement</label>
+          <input value=${d.school || ""} onInput=${(e) => setD({ ...d, school:e.target.value })}
+            placeholder="Lycée, ville" /></div>
+        <button onClick=${save}>Enregistrer</button>
+      </div>
+
+      <div class="card">
+        <p class="eyebrow" style="margin-bottom:var(--s2)">Adhésion</p>
+        <dl class="dl">
+          <dt>Adhérent depuis</dt><dd>${dateFr(d.member_since)}</dd>
+          <dt>Accord parental</dt><dd>${d.parent_consent_at ? `validé le ${dateFr(d.parent_consent_at)}` : "sans objet ou en attente"}</dd>
+        </dl>
+      </div>
+    </div>`;
+}
+
+/* ==================================================================
+   8terdecies. SIGNALER UNE ANOMALIE OU PROPOSER UNE AMÉLIORATION
+   ================================================================== */
+function Signaler({ me, page, onClose }) {
+  const [f, setF] = useState({ kind:"bug", title:"", body:"" });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [ok, setOk] = useState(false);
+
+  async function send() {
+    if (f.title.trim().length < 5) { setErr("Décris le sujet en quelques mots."); return; }
+    setBusy(true); setErr("");
+    const { error } = await db.from("reports").insert({
+      kind: f.kind, title: f.title.trim(), body: f.body.trim() || null,
+      page: page || null, author_id: me.id });
+    if (error) setErr(error.message); else setOk(true);
+    setBusy(false);
+  }
+
+  return html`<div class="veil" onClick=${(e) => e.target === e.currentTarget && onClose()}>
+    <div class="modal">
+      ${ok ? html`
+        <h2 style="font-size:22px;margin-bottom:var(--s3)">Merci</h2>
+        <p class="muted" style="margin-bottom:var(--s4)">
+          Ton message est arrivé au bureau. Tu pourras suivre son traitement
+          depuis ce même bouton.</p>
+        <button onClick=${onClose}>Fermer</button>`
+      : html`
+        <h2 style="font-size:22px;margin-bottom:var(--s2)">Un souci, une idée ?</h2>
+        <p class="muted" style="margin-bottom:var(--s4)">
+          Tout ce qui te gêne ou te manque nous intéresse. C'est comme ça que
+          la plateforme s'améliore.</p>
+        <div class="field"><label>De quoi s'agit-il ?</label>
+          <div class="tags">
+            ${[["bug","Quelque chose ne marche pas"],["amelioration","J'ai une idée"]].map(([k,l]) =>
+              html`<span key=${k} class=${"tag" + (f.kind === k ? " on" : "")}
+                onClick=${() => setF({ ...f, kind:k })}>${l}</span>`)}
+          </div></div>
+        <div class="field"><label>En une phrase</label>
+          <input value=${f.title} onInput=${(e) => setF({ ...f, title:e.target.value })}
+            placeholder=${f.kind === "bug" ? "Le bouton X ne répond pas" : "On pourrait ajouter…"} /></div>
+        <div class="field"><label>Détaille si tu peux</label>
+          <textarea value=${f.body} onInput=${(e) => setF({ ...f, body:e.target.value })}
+            placeholder="Ce que tu faisais, ce que tu attendais…"></textarea></div>
+        ${err && html`<p class="error" style="margin-bottom:var(--s3)">${err}</p>`}
+        <div style="display:flex;gap:var(--s2)">
+          <button disabled=${busy} onClick=${send}>Envoyer</button>
+          <button class="ghost" onClick=${onClose}>Annuler</button>
+        </div>`}
+    </div>
+  </div>`;
+}
+
+/* --- Mes propres signalements, sous le tableau de bord ----------- */
+function MesSignalements({ me }) {
+  const [rows, setRows] = useState([]);
+  useEffect(() => { db.from("reports_view").select("*").eq("author_id", me.id)
+    .order("created_at", { ascending:false }).then(({ data }) => setRows(data || [])); }, []);
+  if (rows.length === 0) return null;
+  const STATUS = { nouveau:"reçu", en_cours:"en cours", resolu:"résolu", rejete:"écarté" };
+  return html`<div class="card">
+    <p class="eyebrow" style="margin-bottom:var(--s3)">Ce que tu as signalé</p>
+    ${rows.map((r) => html`<div class="row" key=${r.id}>
+      <div style="min-width:0">
+        <span style="font-size:14px">${r.title}</span>
+        <span class="muted" style="display:block">${since(r.created_at)}
+          ${r.resolution ? ` · ${r.resolution}` : ""}</span></div>
+      <span class=${"pill " + (r.status === "resolu" ? "live" : r.status === "rejete" ? "off" : "wait")}>
+        ${STATUS[r.status]}</span>
+    </div>`)}
+  </div>`;
 }
 
 /* ==================================================================
@@ -2229,7 +2721,7 @@ function Fiche({ me, studentId, courses, tutors, onBack, reload }) {
 /* ==================================================================
    10. VALIDATION DES INSCRIPTIONS (BUREAU)
    ================================================================== */
-function Validation({ onOpen, reload }) {
+function Validation({ onOpen, reload, team }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -2309,6 +2801,100 @@ function Validation({ onOpen, reload }) {
           </div>
         </div>`;
       })}
+
+      <${Signalements} team=${team || []} />
+    </div>`;
+}
+
+/* --- Traitement des signalements par le bureau ------------------- */
+const R_STATUS = { nouveau:"Nouveau", en_cours:"En cours", resolu:"Résolu", rejete:"Écarté" };
+const R_KIND   = { bug:"Anomalie", amelioration:"Amélioration", forum:"Forum" };
+
+function Signalements({ team }) {
+  const [rows, setRows] = useState([]);
+  const [filter, setFilter] = useState("ouverts");
+  const [err, setErr] = useState("");
+
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    const { data, error } = await db.from("reports_view")
+      .select("*").order("created_at", { ascending:false });
+    if (error) setErr(error.message); else setRows(data || []);
+  }
+
+  async function patch(id, p) {
+    const { error } = await db.from("reports").update(p).eq("id", id);
+    if (error) setErr(error.message); else await load();
+  }
+
+  const shown = filter === "ouverts"
+    ? rows.filter((r) => ["nouveau","en_cours"].includes(r.status))
+    : rows;
+  const open = rows.filter((r) => ["nouveau","en_cours"].includes(r.status)).length;
+
+  return html`
+    <div style="margin-top:var(--s6);border-top:1px solid var(--line);padding-top:var(--s5)">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s3);flex-wrap:wrap;margin-bottom:var(--s4)">
+        <div>
+          <h2 style="font-size:22px">Correctifs et améliorations</h2>
+          <p class="muted">${open} en attente de traitement</p>
+        </div>
+        <div class="tags">
+          ${[["ouverts","À traiter"],["tous","Tout l'historique"]].map(([k,l]) =>
+            html`<span key=${k} class=${"tag" + (filter === k ? " on" : "")}
+              onClick=${() => setFilter(k)}>${l}</span>`)}
+        </div>
+      </div>
+      ${err && html`<p class="error" style="margin-bottom:var(--s3)">${err}</p>`}
+      ${shown.length === 0 && html`<div class="card"><p class="muted">
+        Rien à traiter. Le bouton « Un souci, une idée ? » du tableau de bord alimente cette liste.</p></div>`}
+
+      ${shown.map((r) => html`<div class="card" key=${r.id}>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);flex-wrap:wrap">
+          <div style="min-width:0;flex:1">
+            <span class="pill">${R_KIND[r.kind]}</span>
+            ${r.priority === "haute" && html` <span class="pill off">prioritaire</span>`}
+            <p style="font-size:16px;margin-top:var(--s2)">${r.title}</p>
+            <p class="muted">${r.author_name || "Anonyme"} · ${since(r.created_at)}
+              ${r.page ? ` · depuis ${r.page}` : ""}</p>
+            ${r.body && html`<p class="muted" style="margin-top:var(--s2);white-space:pre-wrap">${r.body}</p>`}
+          </div>
+          <span class=${"pill " + (r.status === "resolu" ? "live" : r.status === "rejete" ? "off" : "wait")}>
+            ${R_STATUS[r.status]}</span>
+        </div>
+
+        <div class="grid2" style="margin-top:var(--s4)">
+          <div class="field" style="margin:0"><label>Confier à</label>
+            <select value=${r.assigned_to || ""}
+              onChange=${(e) => patch(r.id, { assigned_to: e.target.value || null,
+                                              status: e.target.value ? "en_cours" : r.status })}>
+              <option value="">Personne</option>
+              ${team.map((t) => html`<option key=${t.id} value=${t.id}>${t.full_name}</option>`)}
+            </select></div>
+          <div class="field" style="margin:0"><label>Priorité</label>
+            <select value=${r.priority} onChange=${(e) => patch(r.id, { priority: e.target.value })}>
+              <option value="basse">Basse</option>
+              <option value="normale">Normale</option>
+              <option value="haute">Haute</option>
+            </select></div>
+        </div>
+
+        <div style="display:flex;gap:var(--s2);align-items:center;flex-wrap:wrap;margin-top:var(--s3)">
+          ${r.status !== "resolu" && html`<button class="ok tiny"
+            onClick=${() => patch(r.id, { status:"resolu",
+              resolution: prompt("Un mot sur ce qui a été fait ?") || "Traité" })}>
+            Marquer résolu</button>`}
+          ${r.status !== "rejete" && html`<button class="ghost tiny"
+            onClick=${() => patch(r.id, { status:"rejete",
+              resolution: prompt("Pourquoi écarter ce signalement ?") || "Écarté" })}>
+            Écarter</button>`}
+          ${["resolu","rejete"].includes(r.status) && html`<button class="ghost tiny"
+            onClick=${() => patch(r.id, { status:"en_cours" })}>Rouvrir</button>`}
+          ${r.assignee_name && html`<span class="muted">confié à ${r.assignee_name}</span>`}
+        </div>
+        ${r.resolution && html`<p class="muted" style="margin-top:var(--s2);font-style:italic">${r.resolution}</p>`}
+      </div>`)}
     </div>`;
 }
 
@@ -2477,6 +3063,8 @@ function App() {
   const [tutors, setTutors] = useState([]);
   const [tags, setTags] = useState([]);
   const [viewAs, setViewAs] = useState(null);
+  const [myGrade, setMyGrade] = useState(null);
+  const [report, setReport] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [view, setView] = useState({ page:"cours" });
   const [loading, setLoading] = useState(true);
@@ -2509,6 +3097,11 @@ function App() {
 
       const { data: tg } = await db.from("subject_tags").select("*").order("position");
       setTags(tg || []);
+
+      if (prof.role !== "eleve") {
+        const { data: g } = await db.rpc("my_grade");
+        setMyGrade(Array.isArray(g) ? g[0] : g);
+      }
 
       if (prof.role === "eleve" && prof.status !== "active") { setLoading(false); return; }
 
@@ -2605,17 +3198,16 @@ function App() {
     ? [["bord","Tableau de bord"], ["cours","Cours"], ["gestion","Gestion"], ["devoirs","Devoirs"],
        ["eleves","Élèves"], ["equipe","Équipe"],
        ["validation", pendingCount ? `Validation (${pendingCount})` : "Validation"],
-       ["forum","Forum"], ["messages", unreadTotal ? `Messages (${unreadTotal})` : "Messages"],
-       ["profil","Mon profil"]]
+       ["forum","Forum"], ["messages", unreadTotal ? `Messages (${unreadTotal})` : "Messages"]]
     : shown === "encadrant"
-      ? [["bord","Tableau de bord"], ["cours","Cours"], ["devoirs","Devoirs"],
+      ? [["bord","Tableau de bord"], ["rappel","Rappels"], ["cours","Cours"], ["devoirs","Devoirs"],
          ["eleves","Mes élèves"], ["forum","Forum"],
-         ["messages", unreadTotal ? `Messages (${unreadTotal})` : "Messages"], ["profil","Mon profil"]]
+         ["messages", unreadTotal ? `Messages (${unreadTotal})` : "Messages"]]
       : [["cours","Mes cours"], ["devoirs","Devoirs"], ["badges","Badges"],
          ["forum","Forum"], ["messages","Mon encadrant"]];
 
   const lower = me.role === "admin" ? ["encadrant", "eleve"] : me.role === "encadrant" ? ["eleve"] : [];
-  const okTab = tabs.some(([k]) => k === view.page);
+  const okTab = tabs.some(([k]) => k === view.page) || ["compte","profil"].includes(view.page);
 
   return html`
     <div>
@@ -2634,15 +3226,9 @@ function App() {
               onClick=${() => setView({ page:k })}>${label}</button>`)}
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:var(--s3)">
-          ${lower.length > 0 && html`<select value=${viewAs || ""} style="width:auto;padding:4px var(--s2);font-size:13px"
-            onChange=${(e) => { setViewAs(e.target.value || null); setView({ page:"cours" }); }}>
-            <option value="">Ma vue (${ROLES[me.role].toLowerCase()})</option>
-            ${lower.map((r) => html`<option key=${r} value=${r}>Voir comme ${ROLES[r].toLowerCase()}</option>`)}
-          </select>`}
-          <span style="font-size:13px;color:var(--gray-soft)">${me.full_name}</span>
-          <button class="plain" style="color:var(--gray-soft)" onClick=${() => db.auth.signOut()}>Déconnexion</button>
-        </div>
+        <${MenuCompte} me=${me} grade=${myGrade} viewAs=${viewAs} lower=${lower}
+          onView=${(r) => { setViewAs(r); setView({ page: r === "eleve" ? "cours" : "bord" }); }}
+          onGo=${(p) => setView({ page:p })} />
       </div></div>
 
       <div class="wrap" style="padding-top:var(--s5);padding-bottom:var(--s6)">
@@ -2651,12 +3237,17 @@ function App() {
         ${!okTab ? html`<${MesCours} me=${me} courses=${visible} done=${done} xp=${xp}
             streak=${streak} fresh=${fresh}
             onBadges=${() => { setFresh(0); setView({ page:"badges" }); }}
+            onReport=${() => setReport(true)}
             onOpen=${(id) => setView({ page:"cours", id })} />`
         : view.page === "bord"
           ? (shown === "admin"
-              ? html`<${BordAdmin} onGo=${(p) => setView({ page:p })} />`
-              : html`<${BordEncadrant} me=${me} rows=${rows}
+              ? html`<${BordAdmin} me=${me} onGo=${(p) => setView({ page:p })}
+                       onReport=${() => setReport(true)} />`
+              : html`<${BordEncadrant} me=${me} rows=${rows} onReport=${() => setReport(true)}
                        onOpen=${(id) => setView({ page:"eleves", student:id })} />`)
+        : view.page === "compte" ? html`<${MonCompte} me=${me} reload=${load} />`
+        : view.page === "rappel" ? html`<${Rappel} me=${me} rows=${rows}
+            onOpen=${(id) => setView({ page:"eleves", student:id })} />`
         : view.page === "profil" ? html`<${Profil} me=${me} reload=${load} />`
         : view.page === "equipe" ? html`<${Equipe} tags=${tags} onSetRole=${setRole} />`
         : view.page === "gestion" ? html`<${Gestion} courses=${courses} reload=${load} />`
@@ -2664,7 +3255,7 @@ function App() {
           ? (staff
               ? html`<${DevoirsAdmin} me=${me} courses=${courses} tags=${tags} reload=${load} />`
               : html`<${Devoirs} me=${me} reload=${load} />`)
-        : view.page === "validation" ? html`<${Validation} reload=${load}
+        : view.page === "validation" ? html`<${Validation} reload=${load} team=${tutors}
             onOpen=${(id) => setView({ page:"eleves", student:id })} />`
         : view.page === "eleves"
           ? (view.student
@@ -2684,8 +3275,10 @@ function App() {
         : html`<${MesCours} me=${me} courses=${visible} done=${done} xp=${xp}
             streak=${streak} fresh=${fresh}
             onBadges=${() => { setFresh(0); setView({ page:"badges" }); }}
+            onReport=${() => setReport(true)}
             onOpen=${(id) => setView({ page:"cours", id })} />`}
       </div>
+      ${report && html`<${Signaler} me=${me} page=${view.page} onClose=${() => setReport(false)} />`}
     </div>`;
 }
 
